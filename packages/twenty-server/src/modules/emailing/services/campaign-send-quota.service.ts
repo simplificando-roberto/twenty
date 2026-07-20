@@ -57,10 +57,11 @@ export class CampaignSendQuotaService {
 
     // Trials send nothing by default: a free trial that can email strangers is
     // the cheapest spam infrastructure there is. Support lifts it per workspace.
-    const isTrialSendingEnabled = await this.featureFlagService.isFeatureEnabled(
-      FeatureFlagKey.IS_EMAIL_CAMPAIGN_TRIAL_SENDING_ENABLED,
-      workspaceId,
-    );
+    const isTrialSendingEnabled =
+      await this.featureFlagService.isFeatureEnabled(
+        FeatureFlagKey.IS_EMAIL_CAMPAIGN_TRIAL_SENDING_ENABLED,
+        workspaceId,
+      );
 
     return isTrialSendingEnabled ? CAMPAIGN_DAILY_SEND_LIMIT : 0;
   }
