@@ -1,5 +1,5 @@
 import { UseFilters, UseGuards, UsePipes } from '@nestjs/common';
-import { Args, Mutation, Query } from '@nestjs/graphql';
+import { Args, Mutation, Parent, Query, ResolveField } from '@nestjs/graphql';
 
 import { PermissionFlagType } from 'twenty-shared/constants';
 import { FeatureFlagKey } from 'twenty-shared/types';
@@ -7,6 +7,8 @@ import { FeatureFlagKey } from 'twenty-shared/types';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { CreateEmailingDomainInput } from 'src/engine/core-modules/emailing-domain/dtos/create-emailing-domain.input';
 import { EmailingDomainDTO } from 'src/engine/core-modules/emailing-domain/dtos/emailing-domain.dto';
+import { VerificationRecordDTO } from 'src/engine/core-modules/emailing-domain/dtos/verification-record.dto';
+import { buildEmailAuthenticationRecords } from 'src/engine/core-modules/emailing-domain/utils/build-email-authentication-records.util';
 import { UpdateEmailingDomainSenderPostalAddressInput } from 'src/engine/core-modules/emailing-domain/dtos/update-emailing-domain-sender-postal-address.input';
 import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
 import { EmailingDomainGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/emailing-domain-graphql-api-exception.filter';
@@ -99,6 +101,13 @@ export class EmailingDomainResolver {
       );
 
     return emailingDomain;
+  }
+
+  @ResolveField(() => [VerificationRecordDTO])
+  async emailAuthenticationRecords(
+    @Parent() emailingDomain: EmailingDomainDTO,
+  ): Promise<VerificationRecordDTO[]> {
+    return buildEmailAuthenticationRecords(emailingDomain.domain);
   }
 
   @Query(() => [EmailingDomainDTO])

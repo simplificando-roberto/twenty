@@ -1570,6 +1570,7 @@ export type EmailingDomain = {
   __typename?: 'EmailingDomain';
   createdAt: Scalars['DateTime']['output'];
   domain: Scalars['String']['output'];
+  emailAuthenticationRecords: Array<VerificationRecord>;
   id: Scalars['UUID']['output'];
   senderPostalAddress?: Maybe<Scalars['String']['output']>;
   status: EmailingDomainStatus;
@@ -1956,6 +1957,12 @@ export type FindAvailableSsoidp = {
   status: SsoIdentityProviderStatus;
   type: IdentityProviderType;
   workspace: WorkspaceNameAndId;
+};
+
+export type FindMessageSuppressionsInput = {
+  limit?: Scalars['Int']['input'];
+  offset?: Scalars['Int']['input'];
+  reason?: InputMaybe<MessageSuppressionReason>;
 };
 
 export type FrontComponent = {
@@ -2443,6 +2450,33 @@ export enum MessageFolderPendingSyncAction {
   NONE = 'NONE'
 }
 
+export type MessageSuppression = {
+  __typename?: 'MessageSuppression';
+  createdAt: Scalars['DateTime']['output'];
+  emailAddress: Scalars['String']['output'];
+  id: Scalars['UUID']['output'];
+  reason: MessageSuppressionReason;
+  source: MessageSuppressionSource;
+  unsubscribeTopicId?: Maybe<Scalars['UUID']['output']>;
+};
+
+export type MessageSuppressionList = {
+  __typename?: 'MessageSuppressionList';
+  records: Array<MessageSuppression>;
+  totalCount: Scalars['Int']['output'];
+};
+
+export enum MessageSuppressionReason {
+  BOUNCE = 'BOUNCE',
+  COMPLAINT = 'COMPLAINT',
+  UNSUBSCRIBE = 'UNSUBSCRIBE'
+}
+
+export enum MessageSuppressionSource {
+  SYSTEM = 'SYSTEM',
+  WEBHOOK = 'WEBHOOK'
+}
+
 export type MetadataEvent = {
   __typename?: 'MetadataEvent';
   metadataName: Scalars['String']['output'];
@@ -2568,6 +2602,7 @@ export type Mutation = {
   deleteEmailingDomain: Scalars['Boolean']['output'];
   deleteFrontComponent: FrontComponent;
   deleteManyNavigationMenuItems: Array<NavigationMenuItem>;
+  deleteMessageSuppression: Scalars['Boolean']['output'];
   deleteNavigationMenuItem: NavigationMenuItem;
   deleteOneAgent: Agent;
   deleteOneField: Field;
@@ -3066,6 +3101,11 @@ export type MutationDeleteFrontComponentArgs = {
 
 export type MutationDeleteManyNavigationMenuItemsArgs = {
   ids: Array<Scalars['UUID']['input']>;
+};
+
+
+export type MutationDeleteMessageSuppressionArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -4433,6 +4473,7 @@ export type Query = {
   githubClaimAuthorizationUrl: Scalars['String']['output'];
   lineChartData: LineChartData;
   listPlans: Array<BillingPlan>;
+  messageSuppressions: MessageSuppressionList;
   minimalMetadata: MinimalMetadata;
   mostlyEmptyFieldMetadataIds: Array<Scalars['UUID']['output']>;
   myCalendarChannels: Array<CalendarChannel>;
@@ -4786,6 +4827,11 @@ export type QueryGithubClaimAuthorizationUrlArgs = {
 
 export type QueryLineChartDataArgs = {
   input: LineChartDataInput;
+};
+
+
+export type QueryMessageSuppressionsArgs = {
+  input: FindMessageSuppressionsInput;
 };
 
 
@@ -8150,7 +8196,7 @@ export type VerifyEmailingDomainMutation = { __typename?: 'Mutation', verifyEmai
 export type GetEmailingDomainsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetEmailingDomainsQuery = { __typename?: 'Query', getEmailingDomains: Array<{ __typename?: 'EmailingDomain', id: string, domain: string, status: EmailingDomainStatus, verifiedAt?: string | null, senderPostalAddress?: string | null, createdAt: string, updatedAt: string, verificationRecords?: Array<{ __typename?: 'VerificationRecord', type: string, key: string, value: string, priority?: number | null, status?: string | null }> | null }> };
+export type GetEmailingDomainsQuery = { __typename?: 'Query', getEmailingDomains: Array<{ __typename?: 'EmailingDomain', id: string, domain: string, status: EmailingDomainStatus, verifiedAt?: string | null, senderPostalAddress?: string | null, createdAt: string, updatedAt: string, verificationRecords?: Array<{ __typename?: 'VerificationRecord', type: string, key: string, value: string, priority?: number | null, status?: string | null }> | null, emailAuthenticationRecords: Array<{ __typename?: 'VerificationRecord', type: string, key: string, value: string, priority?: number | null, status?: string | null }> }> };
 
 export type RefreshEnterpriseValidityTokenMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -9102,7 +9148,7 @@ export const FindManyPublicDomainsDocument = {"kind":"Document","definitions":[{
 export const DeleteEmailingDomainDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"DeleteEmailingDomain"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deleteEmailingDomain"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<DeleteEmailingDomainMutation, DeleteEmailingDomainMutationVariables>;
 export const UpdateEmailingDomainSenderPostalAddressDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateEmailingDomainSenderPostalAddress"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateEmailingDomainSenderPostalAddressInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateEmailingDomainSenderPostalAddress"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"senderPostalAddress"}}]}}]}}]} as unknown as DocumentNode<UpdateEmailingDomainSenderPostalAddressMutation, UpdateEmailingDomainSenderPostalAddressMutationVariables>;
 export const VerifyEmailingDomainDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"VerifyEmailingDomain"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"verifyEmailingDomain"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"domain"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"verifiedAt"}},{"kind":"Field","name":{"kind":"Name","value":"senderPostalAddress"}},{"kind":"Field","name":{"kind":"Name","value":"verificationRecords"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<VerifyEmailingDomainMutation, VerifyEmailingDomainMutationVariables>;
-export const GetEmailingDomainsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetEmailingDomains"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getEmailingDomains"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"domain"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"verifiedAt"}},{"kind":"Field","name":{"kind":"Name","value":"senderPostalAddress"}},{"kind":"Field","name":{"kind":"Name","value":"verificationRecords"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetEmailingDomainsQuery, GetEmailingDomainsQueryVariables>;
+export const GetEmailingDomainsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetEmailingDomains"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getEmailingDomains"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"domain"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"verifiedAt"}},{"kind":"Field","name":{"kind":"Name","value":"senderPostalAddress"}},{"kind":"Field","name":{"kind":"Name","value":"verificationRecords"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"emailAuthenticationRecords"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"status"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetEmailingDomainsQuery, GetEmailingDomainsQueryVariables>;
 export const RefreshEnterpriseValidityTokenDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RefreshEnterpriseValidityToken"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refreshEnterpriseValidityToken"}}]}}]} as unknown as DocumentNode<RefreshEnterpriseValidityTokenMutation, RefreshEnterpriseValidityTokenMutationVariables>;
 export const ReleaseEnterpriseServerBindingDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ReleaseEnterpriseServerBinding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"releaseEnterpriseServerBinding"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"isValid"}},{"kind":"Field","name":{"kind":"Name","value":"licensee"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptionId"}}]}}]}}]} as unknown as DocumentNode<ReleaseEnterpriseServerBindingMutation, ReleaseEnterpriseServerBindingMutationVariables>;
 export const SetEnterpriseKeyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetEnterpriseKey"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"enterpriseKey"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setEnterpriseKey"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"enterpriseKey"},"value":{"kind":"Variable","name":{"kind":"Name","value":"enterpriseKey"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"isValid"}},{"kind":"Field","name":{"kind":"Name","value":"licensee"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"subscriptionId"}}]}}]}}]} as unknown as DocumentNode<SetEnterpriseKeyMutation, SetEnterpriseKeyMutationVariables>;

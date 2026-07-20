@@ -19,6 +19,7 @@ import { UnsubscribeController } from 'src/modules/emailing/controllers/unsubscr
 import { EmailingDomainReverificationCronCommand } from 'src/modules/emailing/crons/commands/emailing-domain-reverification.cron.command';
 import { EmailingDomainReverificationCronJob } from 'src/modules/emailing/crons/jobs/emailing-domain-reverification.cron.job';
 import { EmailingSendResolver } from 'src/modules/emailing/resolvers/emailing-send.resolver';
+import { MessageSuppressionResolver } from 'src/modules/emailing/resolvers/message-suppression.resolver';
 import { UnsubscribeTopicResolver } from 'src/modules/emailing/resolvers/unsubscribe-topic.resolver';
 import { EmailBillingService } from 'src/modules/emailing/services/email-billing.service';
 import { EmailingDomainSenderService } from 'src/modules/emailing/services/emailing-domain-sender.service';
@@ -56,6 +57,7 @@ import { UnsubscribeTopicService } from 'src/modules/emailing/services/unsubscri
     UnsubscribeTopicService,
     EmailingDomainSenderService,
     EmailingSendResolver,
+    MessageSuppressionResolver,
     UnsubscribeTopicResolver,
     provideWorkspaceScopedRepository(EmailingDomainEntity),
     provideWorkspaceScopedRepository(MessageSuppressionEntity),

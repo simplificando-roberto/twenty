@@ -105,6 +105,16 @@ export const SettingsWorkspaceCommunicationGroupChannelDetail = () => {
     }),
   );
 
+  const emailAuthenticationRecords = (
+    emailingDomain?.emailAuthenticationRecords ?? []
+  ).map((record) => ({
+    ...record,
+    status: record.status ?? undefined,
+    statusColor: isDefined(record.status)
+      ? (RECORD_STATUS_TO_COLOR[record.status] ?? 'gray')
+      : undefined,
+  }));
+
   const isDomainVerified =
     verificationRecords.length > 0 &&
     verificationRecords.every((record) => record.status === 'success');
@@ -216,6 +226,15 @@ export const SettingsWorkspaceCommunicationGroupChannelDetail = () => {
             {!isDomainVerified && (
               <SettingsDnsRecordsTable records={verificationRecords} />
             )}
+          </Section>
+        )}
+        {isDefined(emailingDomain) && (
+          <Section>
+            <H2Title
+              title={t`Email authentication`}
+              description={t`Gmail, Yahoo and Microsoft require DMARC and SPF on domains sending bulk email. Add any record still marked pending at your DNS provider.`}
+            />
+            <SettingsDnsRecordsTable records={emailAuthenticationRecords} />
           </Section>
         )}
         {isDefined(emailingDomain) && (
