@@ -57,6 +57,7 @@ import { MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-ob
 import { createHtmlToTextConverter } from 'src/modules/messaging/message-import-manager/utils/create-html-to-text-converter.util';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { MessageParticipantRole } from 'twenty-shared/types';
+import { emailSchema } from 'twenty-shared/utils';
 import { getDomainFromEmail } from 'src/utils/get-domain-from-email';
 
 type SendCampaignArgs = {
@@ -372,6 +373,14 @@ export class MessageCampaignService {
       const text = this.htmlToText(html);
       const fromAddress = campaign.fromAddress?.primaryEmail ?? '';
       const unsubscribeTopicId = campaign.unsubscribeTopicId ?? undefined;
+
+      if (!emailSchema.safeParse(recipientEmail).success) {
+        await messageRepository.update(messageId, {
+          deliveryStatus: CAMPAIGN_MESSAGE_DELIVERY_STATUS.SKIPPED,
+        });
+
+        return;
+      }
 
       const hasEmailCredits =
         await this.emailBillingService.hasEmailCredits(workspaceId);
