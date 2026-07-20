@@ -9,6 +9,7 @@ import { useMyMessageChannels } from '@/settings/accounts/hooks/useMyMessageChan
 import { getEmailChannelDomain } from '@/settings/accounts/utils/getEmailChannelDomain';
 import { SettingsDnsRecordsTable } from '@/settings/components/SettingsDnsRecordsTable';
 
+import { SettingsEmailingDomainPostalAddressInput } from '@/settings/emailing-domains/components/SettingsEmailingDomainPostalAddressInput';
 import { SettingsEmailingDomainVerifyButton } from '@/settings/emailing-domains/components/SettingsEmailingDomainVerifyButton';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
@@ -215,6 +216,18 @@ export const SettingsWorkspaceCommunicationGroupChannelDetail = () => {
             {!isDomainVerified && (
               <SettingsDnsRecordsTable records={verificationRecords} />
             )}
+          </Section>
+        )}
+        {isDefined(emailingDomain) && (
+          <Section>
+            <H2Title
+              title={t`Postal address`}
+              description={t`Anti-spam law requires a physical postal address in every campaign. It is added to the footer of bulk emails sent from this domain.`}
+            />
+            <SettingsEmailingDomainPostalAddressInput
+              emailingDomainId={emailingDomain.id}
+              senderPostalAddress={emailingDomain.senderPostalAddress}
+            />
           </Section>
         )}
       </SettingsPageContainer>

@@ -127,6 +127,25 @@ export class EmailingDomainService {
     });
   }
 
+  async updateSenderPostalAddress(
+    workspaceId: string,
+    emailingDomainId: string,
+    senderPostalAddress: string,
+  ): Promise<EmailingDomainEntity> {
+    const emailingDomain = await this.findEmailingDomainByIdOrThrow(
+      workspaceId,
+      emailingDomainId,
+    );
+
+    await this.emailingDomainRepository.update(
+      workspaceId,
+      { id: emailingDomain.id },
+      { senderPostalAddress: senderPostalAddress.trim() },
+    );
+
+    return this.findEmailingDomainByIdOrThrow(workspaceId, emailingDomainId);
+  }
+
   async deleteEmailingDomain(
     workspace: WorkspaceEntity,
     emailingDomainId: string,

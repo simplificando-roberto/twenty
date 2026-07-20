@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { isNonEmptyString } from '@sniptt/guards';
 
-import { type EmailingDomainSendEmailInput } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-send-email-input.type';
+import { type EmailingDomainSendEmailRequest } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-send-email-input.type';
 import { UnsubscribeTokenService } from 'src/engine/core-modules/emailing-domain/services/unsubscribe-token.service';
 import { buildUnsubscribeHeaders } from 'src/engine/core-modules/emailing-domain/utils/build-unsubscribe-headers.util';
 import { buildUnsubscribeHtmlFooter } from 'src/engine/core-modules/emailing-domain/utils/build-unsubscribe-html-footer.util';
@@ -16,9 +16,9 @@ export class UnsubscribeContentService {
   ) {}
 
   addTo(
-    email: EmailingDomainSendEmailInput,
+    email: EmailingDomainSendEmailRequest,
     unsubscribeBaseUrl: string | null,
-  ): EmailingDomainSendEmailInput {
+  ): EmailingDomainSendEmailRequest {
     if (email.isBulk !== true || !isNonEmptyString(unsubscribeBaseUrl)) {
       return email;
     }
@@ -39,9 +39,15 @@ export class UnsubscribeContentService {
 
     return {
       ...email,
-      text: `${email.text}${buildUnsubscribeTextFooter(unsubscribeUrls.webUrl)}`,
+      text: `${email.text}${buildUnsubscribeTextFooter(
+        unsubscribeUrls.webUrl,
+        email.emailingDomain.senderPostalAddress,
+      )}`,
       html: isNonEmptyString(email.html)
-        ? `${email.html}${buildUnsubscribeHtmlFooter(unsubscribeUrls.webUrl)}`
+        ? `${email.html}${buildUnsubscribeHtmlFooter(
+            unsubscribeUrls.webUrl,
+            email.emailingDomain.senderPostalAddress,
+          )}`
         : email.html,
       headers: [
         ...(email.headers ?? []),

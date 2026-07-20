@@ -22,7 +22,9 @@ export const EMAILING_DOMAIN_REVERIFICATION_CRON_PATTERN = '0 * * * *';
 // provider APIs never see the whole estate at once.
 @Processor(MessageQueue.cronQueue)
 export class EmailingDomainReverificationCronJob {
-  private readonly logger = new Logger(EmailingDomainReverificationCronJob.name);
+  private readonly logger = new Logger(
+    EmailingDomainReverificationCronJob.name,
+  );
 
   constructor(
     @InjectRepository(WorkspaceEntity)
