@@ -321,15 +321,23 @@ export class MessageCampaignService {
         MessageWorkspaceEntity,
       );
 
-      const message = await messageRepository.findOne({
-        where: { id: messageId },
-      });
+      // Claim the message before sending. Reading the status and then sending
+      // leaves a window where two workers both see QUEUED and both send, and a
+      // duplicate marketing email costs far more (complaints, reputation) than
+      // a rare unsent one. Any failure below moves it back to FAILED, which is
+      // claimable again on retry.
+      const claim = await messageRepository.update(
+        {
+          id: messageId,
+          deliveryStatus: In([
+            CAMPAIGN_MESSAGE_DELIVERY_STATUS.QUEUED,
+            CAMPAIGN_MESSAGE_DELIVERY_STATUS.FAILED,
+          ]),
+        },
+        { deliveryStatus: CAMPAIGN_MESSAGE_DELIVERY_STATUS.SENT },
+      );
 
-      if (
-        message === null ||
-        (message.deliveryStatus !== CAMPAIGN_MESSAGE_DELIVERY_STATUS.QUEUED &&
-          message.deliveryStatus !== CAMPAIGN_MESSAGE_DELIVERY_STATUS.FAILED)
-      ) {
+      if (claim.affected === 0) {
         return;
       }
 
