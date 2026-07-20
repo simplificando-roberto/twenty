@@ -394,6 +394,7 @@ export class MessageCampaignService {
               text,
               html,
               unsubscribeTopicId,
+              isBulk: true,
             },
           );
         } catch (error) {

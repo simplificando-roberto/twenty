@@ -19,7 +19,7 @@ export class UnsubscribeContentService {
     email: EmailingDomainSendEmailInput,
     unsubscribeBaseUrl: string | null,
   ): EmailingDomainSendEmailInput {
-    if (!isNonEmptyString(unsubscribeBaseUrl)) {
+    if (email.isBulk !== true || !isNonEmptyString(unsubscribeBaseUrl)) {
       return email;
     }
 

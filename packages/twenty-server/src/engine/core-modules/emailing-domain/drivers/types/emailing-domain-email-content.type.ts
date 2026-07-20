@@ -3,6 +3,7 @@ import { type EmailingDomainHeader } from 'src/engine/core-modules/emailing-doma
 
 export type EmailingDomainEmailContent = {
   from: string;
+  isBulk?: boolean;
   to: string[];
   cc?: string[];
   bcc?: string[];
