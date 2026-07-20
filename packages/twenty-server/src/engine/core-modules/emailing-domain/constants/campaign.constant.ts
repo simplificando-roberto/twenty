@@ -25,5 +25,13 @@ export const CAMPAIGN_STATS_REFRESH_DELAY_MS =
 
 export const MAX_CAMPAIGN_RECIPIENTS = 10000;
 
+// Campaign sends are spread over time so a large campaign cannot exceed the
+// provider send rate. A fresh AWS SES production account allows ~14 messages
+// per second, so this stays deliberately below that.
+export const CAMPAIGN_SEND_RATE_PER_SECOND = 8;
+export const CAMPAIGN_SEND_INTERVAL_MS = Math.ceil(
+  1000 / CAMPAIGN_SEND_RATE_PER_SECOND,
+);
+
 export const CAMPAIGN_MESSAGE_ID_NAMESPACE =
   '0c4b9e7a-3f2d-4b6c-9e1a-7d8f5a2c3b4e';

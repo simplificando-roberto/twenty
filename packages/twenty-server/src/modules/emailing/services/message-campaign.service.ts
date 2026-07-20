@@ -7,6 +7,7 @@ import { v4, v5 } from 'uuid';
 import {
   CAMPAIGN_MESSAGE_DELIVERY_STATUS,
   CAMPAIGN_MESSAGE_ID_NAMESPACE,
+  CAMPAIGN_SEND_INTERVAL_MS,
   CAMPAIGN_STATS_REFRESH_DELAY_MS,
   CAMPAIGN_STATUS,
   MATERIALIZE_CAMPAIGN_JOB,
@@ -281,7 +282,7 @@ export class MessageCampaignService {
         });
       }
 
-      for (const recipient of allRecipients) {
+      for (const [index, recipient] of allRecipients.entries()) {
         await this.messageQueueService.add<SendCampaignEmailJobData>(
           SEND_CAMPAIGN_EMAIL_JOB,
           {
@@ -292,7 +293,10 @@ export class MessageCampaignService {
             recipientEmail: recipient.email,
             emailingDomainId,
           },
-          { retryLimit: 3 },
+          {
+            retryLimit: 3,
+            delay: index * CAMPAIGN_SEND_INTERVAL_MS,
+          },
         );
       }
 
