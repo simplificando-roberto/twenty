@@ -62,16 +62,36 @@ import { MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-ob
 import { createHtmlToTextConverter } from 'src/modules/messaging/message-import-manager/utils/create-html-to-text-converter.util';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { MessageParticipantRole } from 'twenty-shared/types';
-import { emailSchema } from 'twenty-shared/utils';
+import { emailSchema, isDefined } from 'twenty-shared/utils';
 import { getDomainFromEmail } from 'src/utils/get-domain-from-email';
 
 type SendCampaignArgs = {
   workspaceId: string;
   userWorkspaceId: string;
+  campaignId?: string;
   listId: string;
   subject: string;
   html: string;
   fromAddress: string;
+  unsubscribeTopicId?: string;
+};
+
+type SaveCampaignDraftArgs = {
+  workspaceId: string;
+  userWorkspaceId: string;
+  campaignId?: string;
+  listId?: string;
+  subject?: string;
+  html?: string;
+  fromAddress?: string;
+  unsubscribeTopicId?: string;
+};
+
+type CampaignContent = {
+  subject?: string;
+  html?: string;
+  fromAddress?: string;
+  listId?: string;
   unsubscribeTopicId?: string;
 };
 
@@ -98,6 +118,20 @@ const toRawRecipient = (person: {
 }): RawCampaignRecipient => ({
   personId: person.id,
   email: person.emails?.primaryEmail ?? null,
+});
+
+const toCampaignColumns = ({
+  subject,
+  html,
+  fromAddress,
+  listId,
+  unsubscribeTopicId,
+}: CampaignContent) => ({
+  subject: subject ?? null,
+  bodyTemplate: html ?? null,
+  fromAddress: { primaryEmail: fromAddress ?? '', additionalEmails: null },
+  listId: listId ?? null,
+  unsubscribeTopicId: unsubscribeTopicId ?? null,
 });
 
 @Injectable()
@@ -144,6 +178,7 @@ export class MessageCampaignService {
   async send({
     workspaceId,
     userWorkspaceId,
+    campaignId: draftCampaignId,
     unsubscribeTopicId,
     subject,
     html,
@@ -197,15 +232,26 @@ export class MessageCampaignService {
             );
           }
 
-          const newCampaignId = await this.createCampaign({
-            workspaceId,
-            roleId,
-            subject,
-            html,
-            fromAddress,
-            unsubscribeTopicId,
-            listId,
-          });
+          const newCampaignId = isDefined(draftCampaignId)
+            ? await this.startDraftCampaign({
+                workspaceId,
+                roleId,
+                campaignId: draftCampaignId,
+                subject,
+                html,
+                fromAddress,
+                unsubscribeTopicId,
+                listId,
+              })
+            : await this.createCampaign({
+                workspaceId,
+                roleId,
+                subject,
+                html,
+                fromAddress,
+                unsubscribeTopicId,
+                listId,
+              });
 
           return {
             campaignId: newCampaignId,
@@ -541,6 +587,84 @@ export class MessageCampaignService {
         campaignId: message.messageCampaignId,
       });
     }, buildSystemAuthContext(workspaceId));
+  }
+
+  async saveDraft({
+    workspaceId,
+    userWorkspaceId,
+    campaignId,
+    ...content
+  }: SaveCampaignDraftArgs): Promise<{ id: string }> {
+    const roleId = await this.userRoleService.getRoleIdForUserWorkspace({
+      workspaceId,
+      userWorkspaceId,
+    });
+
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const campaignRepository = await this.getUserRepository(
+          workspaceId,
+          MessageCampaignWorkspaceEntity,
+          roleId,
+        );
+
+        if (!isDefined(campaignId)) {
+          const { identifiers } = await campaignRepository.insert({
+            ...toCampaignColumns(content),
+            status: CAMPAIGN_STATUS.DRAFT,
+          });
+
+          return { id: identifiers[0].id };
+        }
+
+        const claim = await campaignRepository.update(
+          { id: campaignId, status: CAMPAIGN_STATUS.DRAFT },
+          toCampaignColumns(content),
+        );
+
+        if (claim.affected === 0) {
+          throw new EmailGroupAccessException(
+            `Campaign ${campaignId} is not a draft and cannot be autosaved`,
+            EmailGroupAccessExceptionCode.MESSAGE_CAMPAIGN_NOT_EDITABLE,
+          );
+        }
+
+        return { id: campaignId };
+      },
+    );
+  }
+
+  private async startDraftCampaign({
+    workspaceId,
+    roleId,
+    campaignId,
+    ...content
+  }: {
+    workspaceId: string;
+    roleId: string;
+    campaignId: string;
+  } & CampaignContent): Promise<string> {
+    const campaignRepository = await this.getUserRepository(
+      workspaceId,
+      MessageCampaignWorkspaceEntity,
+      roleId,
+    );
+
+    // A campaign that already left DRAFT is either sending or sent, so claiming
+    // it conditionally keeps a second send from re-queueing the same recipients.
+    const claim = await campaignRepository.update(
+      { id: campaignId, status: CAMPAIGN_STATUS.DRAFT },
+      { ...toCampaignColumns(content), status: CAMPAIGN_STATUS.SENDING },
+    );
+
+    if (claim.affected === 0) {
+      throw new EmailGroupAccessException(
+        `Campaign ${campaignId} is not a draft and cannot be sent again`,
+        EmailGroupAccessExceptionCode.MESSAGE_CAMPAIGN_NOT_EDITABLE,
+      );
+    }
+
+    return campaignId;
   }
 
   private async createCampaign({

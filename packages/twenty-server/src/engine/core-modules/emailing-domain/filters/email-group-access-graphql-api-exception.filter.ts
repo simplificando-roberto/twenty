@@ -9,6 +9,7 @@ import {
   EmailGroupAccessExceptionCode,
 } from 'src/engine/core-modules/emailing-domain/exceptions/email-group-access.exception';
 import {
+  ConflictError,
   ForbiddenError,
   InternalServerError,
 } from 'src/engine/core-modules/graphql/utils/graphql-errors.util';
@@ -20,6 +21,8 @@ export class EmailGroupAccessGraphqlApiExceptionFilter implements ExceptionFilte
       case EmailGroupAccessExceptionCode.EMAIL_GROUP_ENTERPRISE_PLAN_REQUIRED:
       case EmailGroupAccessExceptionCode.CAMPAIGN_SEND_QUOTA_EXCEEDED:
         throw new ForbiddenError(exception);
+      case EmailGroupAccessExceptionCode.MESSAGE_CAMPAIGN_NOT_EDITABLE:
+        throw new ConflictError(exception);
       case EmailGroupAccessExceptionCode.INTERNAL_SERVER_ERROR:
         throw new InternalServerError(exception);
       default: {

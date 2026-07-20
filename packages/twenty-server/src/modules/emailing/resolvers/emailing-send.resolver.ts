@@ -8,7 +8,9 @@ import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorato
 import { CampaignAudiencePreviewDTO } from 'src/engine/core-modules/emailing-domain/dtos/campaign-audience-preview.dto';
 import { CampaignSendQuotaDTO } from 'src/engine/core-modules/emailing-domain/dtos/campaign-send-quota.dto';
 import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
+import { MessageCampaignDraftDTO } from 'src/engine/core-modules/emailing-domain/dtos/message-campaign-draft.dto';
 import { PreviewMessageCampaignAudienceInput } from 'src/engine/core-modules/emailing-domain/dtos/preview-message-campaign-audience.input';
+import { SaveMessageCampaignDraftInput } from 'src/engine/core-modules/emailing-domain/dtos/save-message-campaign-draft.input';
 import { SendEmailViaDomainInput } from 'src/engine/core-modules/emailing-domain/dtos/send-email-via-domain.input';
 import { SendEmailViaDomainOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-email-via-domain-output.dto';
 import { SendMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign.input';
@@ -87,8 +89,30 @@ export class EmailingSendResolver {
     return this.messageCampaignService.send({
       workspaceId: currentWorkspace.id,
       userWorkspaceId,
+      campaignId: input.campaignId,
       unsubscribeTopicId: input.unsubscribeTopicId,
       listId: input.listId,
+      subject: input.subject,
+      html: input.body,
+      fromAddress: input.fromAddress,
+    });
+  }
+
+  @Mutation(() => MessageCampaignDraftDTO)
+  @RequireFeatureFlag(FeatureFlagKey.IS_EMAIL_GROUP_ENABLED)
+  async saveMessageCampaignDraft(
+    @Args('input') input: SaveMessageCampaignDraftInput,
+    @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @AuthUserWorkspaceId() userWorkspaceId: string,
+  ): Promise<MessageCampaignDraftDTO> {
+    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
+
+    return this.messageCampaignService.saveDraft({
+      workspaceId: currentWorkspace.id,
+      userWorkspaceId,
+      campaignId: input.campaignId,
+      listId: input.listId,
+      unsubscribeTopicId: input.unsubscribeTopicId,
       subject: input.subject,
       html: input.body,
       fromAddress: input.fromAddress,

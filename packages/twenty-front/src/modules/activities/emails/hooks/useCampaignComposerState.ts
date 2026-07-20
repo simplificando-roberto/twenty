@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { useCampaignDraftAutosave } from '@/activities/emails/hooks/useCampaignDraftAutosave';
 import { useSendMessageCampaign } from '@/activities/emails/hooks/useSendMessageCampaign';
 
 type UseCampaignComposerStateArgs = {
@@ -19,6 +20,14 @@ export const useCampaignComposerState = ({
 
   const { sendMessageCampaign, loading } = useSendMessageCampaign();
 
+  const { campaignId, stopAutosave } = useCampaignDraftAutosave({
+    listId,
+    unsubscribeTopicId,
+    fromAddress,
+    subject,
+    body,
+  });
+
   const canSend =
     listId !== null &&
     fromAddress.trim().length > 0 &&
@@ -30,7 +39,10 @@ export const useCampaignComposerState = ({
       return;
     }
 
+    stopAutosave();
+
     const success = await sendMessageCampaign({
+      campaignId: campaignId ?? undefined,
       listId,
       unsubscribeTopicId: unsubscribeTopicId ?? undefined,
       subject,
