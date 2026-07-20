@@ -25,6 +25,7 @@ import { EmailBillingService } from 'src/modules/emailing/services/email-billing
 import { EmailingDomainSenderService } from 'src/modules/emailing/services/emailing-domain-sender.service';
 import { MessageCampaignStatisticsService } from 'src/modules/emailing/services/message-campaign-statistics.service';
 import { MessageCampaignService } from 'src/modules/emailing/services/message-campaign.service';
+import { CampaignSendQuotaService } from 'src/modules/emailing/services/campaign-send-quota.service';
 import { MessageSuppressionService } from 'src/modules/emailing/services/message-suppression.service';
 import { UnsubscribeTopicService } from 'src/modules/emailing/services/unsubscribe-topic.service';
 
@@ -53,6 +54,7 @@ import { UnsubscribeTopicService } from 'src/modules/emailing/services/unsubscri
     EmailBillingService,
     MessageCampaignService,
     MessageCampaignStatisticsService,
+    CampaignSendQuotaService,
     MessageSuppressionService,
     UnsubscribeTopicService,
     EmailingDomainSenderService,
@@ -68,6 +70,7 @@ import { UnsubscribeTopicService } from 'src/modules/emailing/services/unsubscri
     EmailingDomainSenderService,
     MessageCampaignService,
     MessageCampaignStatisticsService,
+    CampaignSendQuotaService,
     MessageSuppressionService,
     UnsubscribeTopicService,
   ],

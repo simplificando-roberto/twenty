@@ -14,6 +14,7 @@ import { FeatureFlagKey, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath } from 'twenty-shared/utils';
 import {
   IconBrandWhatsapp,
+  IconForbid,
   IconMail,
   IconMailX,
   IconPhone,
@@ -25,6 +26,7 @@ import coverLight from '~/pages/settings/communications/assets/cover-light.png';
 import { SettingsCard } from '@/settings/components/SettingsCard';
 import { useContext } from 'react';
 import { ThemeContext } from 'twenty-ui/theme-constants';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 const COMMUNICATIONS_TABS_INSTANCE_ID = 'settings-communications-tabs';
 
@@ -36,6 +38,7 @@ const StyledCardLink = styled.a`
 
 export const SettingsWorkspaceCommunications = () => {
   const { theme } = useContext(ThemeContext);
+  const navigateSettings = useNavigateSettings();
 
   const { t } = useLingui();
 
@@ -120,6 +123,16 @@ export const SettingsWorkspaceCommunications = () => {
               title={t`See unsubscribe page`}
             />
           </StyledCardLink>
+          <SettingsCard
+            Icon={
+              <IconForbid
+                size={theme.icon.size.lg}
+                stroke={theme.icon.stroke.md}
+              />
+            }
+            title={t`Unsubscribers`}
+            onClick={() => navigateSettings(SettingsPath.Unsubscribers)}
+          />
         </Section>
       </SettingsPageContainer>
     </SettingsPageLayout>
