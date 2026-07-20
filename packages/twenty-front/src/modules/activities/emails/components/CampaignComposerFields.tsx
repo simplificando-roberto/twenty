@@ -10,8 +10,9 @@ import { FormTextFieldInput } from '@/object-record/record-field/ui/form-types/c
 import { useMyMessageChannels } from '@/settings/accounts/hooks/useMyMessageChannels';
 import { Select } from '@/ui/input/components/Select';
 import { t } from '@lingui/core/macro';
-import { MessageChannelType } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
+import { Link } from 'react-router-dom';
+import { MessageChannelType, SettingsPath } from 'twenty-shared/types';
+import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import { type SelectOption } from 'twenty-ui/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
 
@@ -26,6 +27,10 @@ const StyledHint = styled.div`
   color: ${themeCssVariables.font.color.tertiary};
   font-size: ${themeCssVariables.font.size.xs};
   padding: ${themeCssVariables.spacing[1]} 0;
+`;
+
+const StyledHintLink = styled(Link)`
+  color: ${themeCssVariables.font.color.primary};
 `;
 
 type CampaignAudiencePreview = NonNullable<
@@ -50,10 +55,7 @@ const buildAudienceHint = (preview: CampaignAudiencePreview): string => {
 
   const breakdown = parts.length > 0 ? ` (${parts.join(', ')})` : '';
 
-  return (
-    t`${preview.totalMembers} in this list — ${preview.sendable} sendable` +
-    breakdown
-  );
+  return t`${preview.totalMembers} in this list` + breakdown;
 };
 
 type CampaignComposerFieldsProps = {
@@ -109,6 +111,16 @@ export const CampaignComposerFields = ({
         emptyOption={{ label: t`Select a sender`, value: '' }}
         onChange={campaignState.setFromAddress}
       />
+      {senderOptions.length === 0 && (
+        <StyledHint>
+          {t`No shared mailbox yet.`}{' '}
+          <StyledHintLink
+            to={getSettingsPath(SettingsPath.WorkspaceCommunications)}
+          >
+            {t`Create one in Communication settings`}
+          </StyledHintLink>
+        </StyledHint>
+      )}
       <FormSingleRecordPicker
         label={t`To`}
         objectNameSingulars={['messageList']}
@@ -119,20 +131,24 @@ export const CampaignComposerFields = ({
       {isDefined(audiencePreview) && (
         <StyledHint>{buildAudienceHint(audiencePreview)}</StyledHint>
       )}
-      <Select
-        dropdownId="campaign-composer-unsubscribe-topic"
-        label={t`Unsubscribe topic`}
-        fullWidth
-        value={campaignState.unsubscribeTopicId ?? ''}
-        options={topicOptions}
-        emptyOption={{ label: t`No topic`, value: '' }}
-        onChange={(value) =>
-          campaignState.setUnsubscribeTopicId(value === '' ? null : value)
-        }
-      />
-      <StyledHint>
-        {t`The unsubscribe topic this email belongs to. Recipients who opted out of it are skipped, and the unsubscribe link is scoped to it.`}
-      </StyledHint>
+      {topicOptions.length > 0 && (
+        <>
+          <Select
+            dropdownId="campaign-composer-unsubscribe-topic"
+            label={t`Unsubscribe topic`}
+            fullWidth
+            value={campaignState.unsubscribeTopicId ?? ''}
+            options={topicOptions}
+            emptyOption={{ label: t`No topic`, value: '' }}
+            onChange={(value) =>
+              campaignState.setUnsubscribeTopicId(value === '' ? null : value)
+            }
+          />
+          <StyledHint>
+            {t`The unsubscribe topic this email belongs to. Recipients who opted out of it are skipped, and the unsubscribe link is scoped to it.`}
+          </StyledHint>
+        </>
+      )}
       <FormTextFieldInput
         label={t`Subject`}
         defaultValue={campaignState.subject}
