@@ -3,20 +3,35 @@ import { useState } from 'react';
 import { useCampaignDraftAutosave } from '@/activities/emails/hooks/useCampaignDraftAutosave';
 import { useSendMessageCampaign } from '@/activities/emails/hooks/useSendMessageCampaign';
 
+type CampaignComposerInitialValues = {
+  campaignId?: string | null;
+  listId?: string | null;
+  unsubscribeTopicId?: string | null;
+  fromAddress?: string | null;
+  subject?: string | null;
+  body?: string | null;
+};
+
 type UseCampaignComposerStateArgs = {
   onSent?: () => void;
+  initialValues?: CampaignComposerInitialValues;
 };
 
 export const useCampaignComposerState = ({
   onSent,
+  initialValues,
 }: UseCampaignComposerStateArgs) => {
   const [unsubscribeTopicId, setUnsubscribeTopicId] = useState<string | null>(
-    null,
+    initialValues?.unsubscribeTopicId ?? null,
   );
-  const [listId, setListId] = useState<string | null>(null);
-  const [fromAddress, setFromAddress] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [listId, setListId] = useState<string | null>(
+    initialValues?.listId ?? null,
+  );
+  const [fromAddress, setFromAddress] = useState(
+    initialValues?.fromAddress ?? '',
+  );
+  const [subject, setSubject] = useState(initialValues?.subject ?? '');
+  const [body, setBody] = useState(initialValues?.body ?? '');
 
   const { sendMessageCampaign, loading } = useSendMessageCampaign();
 
@@ -26,6 +41,7 @@ export const useCampaignComposerState = ({
     fromAddress,
     subject,
     body,
+    initialCampaignId: initialValues?.campaignId,
   });
 
   const canSend =

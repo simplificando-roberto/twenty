@@ -1,16 +1,24 @@
 import { Injectable, Type } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { FeatureFlagKey } from 'twenty-shared/types';
-import { MoreThan, Not, IsNull, type ObjectLiteral } from 'typeorm';
+import { isDefined } from 'twenty-shared/utils';
+import { MoreThan, Not, IsNull, Repository, type ObjectLiteral } from 'typeorm';
 
 import { NO_BILLING_SUBSCRIPTION } from 'src/engine/core-modules/billing/constants/no-billing-subscription.constant';
 import { BillingService } from 'src/engine/core-modules/billing/services/billing.service';
 import { SubscriptionStatus } from 'src/engine/core-modules/billing/enums/billing-subscription-status.enum';
 import {
-  CAMPAIGN_DAILY_SEND_LIMIT,
+  MAX_CAMPAIGN_EMAILS_SENDABLE,
+  MAX_CAMPAIGN_EMAILS_SENDABLE_UNVERIFIED,
   CAMPAIGN_QUOTA_WINDOW_MS,
 } from 'src/engine/core-modules/emailing-domain/constants/campaign.constant';
+import { EmailingDomainStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-status.type';
+import { EmailingDomainEntity } from 'src/engine/core-modules/emailing-domain/emailing-domain.entity';
 import { FeatureFlagService } from 'src/engine/core-modules/feature-flag/services/feature-flag.service';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
+import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message.workspace-entity';
@@ -28,6 +36,10 @@ export class CampaignSendQuotaService {
     private readonly billingService: BillingService,
     private readonly workspaceCacheService: WorkspaceCacheService,
     private readonly featureFlagService: FeatureFlagService,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
+    @InjectWorkspaceScopedRepository(EmailingDomainEntity)
+    private readonly emailingDomainRepository: WorkspaceScopedRepository<EmailingDomainEntity>,
   ) {}
 
   async getQuota(workspaceId: string): Promise<CampaignSendQuota> {
@@ -42,6 +54,17 @@ export class CampaignSendQuotaService {
       return Number.POSITIVE_INFINITY;
     }
 
+    const workspace = await this.workspaceRepository.findOne({
+      where: { id: workspaceId },
+      select: { id: true, messageCampaignDailySendLimit: true },
+    });
+
+    // An admin panel override outranks every tier, so support can raise a
+    // workspace without waiting on a release.
+    if (isDefined(workspace?.messageCampaignDailySendLimit)) {
+      return workspace.messageCampaignDailySendLimit;
+    }
+
     const { currentBillingSubscription } =
       await this.workspaceCacheService.getOrRecompute(workspaceId, [
         'currentBillingSubscription',
@@ -51,19 +74,28 @@ export class CampaignSendQuotaService {
       currentBillingSubscription === NO_BILLING_SUBSCRIPTION ||
       currentBillingSubscription.status === SubscriptionStatus.Trialing;
 
-    if (!isTrialing) {
-      return CAMPAIGN_DAILY_SEND_LIMIT;
+    if (isTrialing) {
+      // Trials send nothing by default: a free trial that can email strangers
+      // is the cheapest spam infrastructure there is.
+      const isTrialSendingEnabled =
+        await this.featureFlagService.isFeatureEnabled(
+          FeatureFlagKey.IS_EMAIL_CAMPAIGN_TRIAL_SENDING_ENABLED,
+          workspaceId,
+        );
+
+      if (!isTrialSendingEnabled) {
+        return 0;
+      }
     }
 
-    // Trials send nothing by default: a free trial that can email strangers is
-    // the cheapest spam infrastructure there is. Support lifts it per workspace.
-    const isTrialSendingEnabled =
-      await this.featureFlagService.isFeatureEnabled(
-        FeatureFlagKey.IS_EMAIL_CAMPAIGN_TRIAL_SENDING_ENABLED,
-        workspaceId,
-      );
+    const verifiedDomainCount = await this.emailingDomainRepository.count(
+      workspaceId,
+      { where: { status: EmailingDomainStatus.VERIFIED } },
+    );
 
-    return isTrialSendingEnabled ? CAMPAIGN_DAILY_SEND_LIMIT : 0;
+    return verifiedDomainCount > 0
+      ? MAX_CAMPAIGN_EMAILS_SENDABLE
+      : MAX_CAMPAIGN_EMAILS_SENDABLE_UNVERIFIED;
   }
 
   private async countRecentlySentEmails(workspaceId: string): Promise<number> {

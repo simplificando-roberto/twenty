@@ -21,6 +21,7 @@ type UseCampaignDraftAutosaveArgs = {
   fromAddress: string;
   subject: string;
   body: string;
+  initialCampaignId?: string | null;
 };
 
 export const useCampaignDraftAutosave = ({
@@ -29,8 +30,11 @@ export const useCampaignDraftAutosave = ({
   fromAddress,
   subject,
   body,
+  initialCampaignId,
 }: UseCampaignDraftAutosaveArgs) => {
-  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [campaignId, setCampaignId] = useState<string | null>(
+    initialCampaignId ?? null,
+  );
   const [isAutosaveStopped, setIsAutosaveStopped] = useState(false);
 
   const [saveMessageCampaignDraftMutation] = useMutation<

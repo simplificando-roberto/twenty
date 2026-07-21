@@ -87,6 +87,14 @@ type SaveCampaignDraftArgs = {
   unsubscribeTopicId?: string;
 };
 
+type SendTestEmailArgs = {
+  workspaceId: string;
+  toAddress: string;
+  fromAddress: string;
+  subject: string;
+  html: string;
+};
+
 type CampaignContent = {
   subject?: string;
   html?: string;
@@ -996,6 +1004,46 @@ export class MessageCampaignService {
     });
 
     return people.map(toRawRecipient);
+  }
+
+  async sendTestEmail({
+    workspaceId,
+    toAddress,
+    fromAddress,
+    subject,
+    html,
+  }: SendTestEmailArgs): Promise<void> {
+    const fromDomain = getDomainFromEmail(fromAddress)?.toLowerCase();
+
+    const emailingDomain = await this.emailingDomainRepository.findOne(
+      workspaceId,
+      { where: { domain: fromDomain, status: EmailingDomainStatus.VERIFIED } },
+    );
+
+    if (emailingDomain === null) {
+      throw new EmailGroupAccessException(
+        `No verified emailing domain matches the from address ${fromAddress}`,
+        EmailGroupAccessExceptionCode.CAMPAIGN_TEST_SEND_NOT_POSSIBLE,
+      );
+    }
+
+    // A test send previews the template with empty variables, so a placeholder
+    // that is never populated is visible before the campaign goes out.
+    const variables = this.buildTemplateVariables(null);
+
+    await this.emailingDomainSenderService.sendEmail(
+      workspaceId,
+      emailingDomain.id,
+      {
+        from: fromAddress,
+        to: [toAddress],
+        subject: `[Test] ${renderCampaignTemplate(subject, variables, {
+          escapeValues: false,
+        })}`,
+        html: renderCampaignTemplate(html, variables, { escapeValues: true }),
+        text: this.htmlToText(html),
+      },
+    );
   }
 
   private buildTemplateVariables(

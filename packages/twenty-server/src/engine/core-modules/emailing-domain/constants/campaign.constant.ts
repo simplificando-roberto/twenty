@@ -25,7 +25,8 @@ export const CAMPAIGN_STATS_REFRESH_DELAY_MS =
 
 export const MAX_CAMPAIGN_RECIPIENTS = 10000;
 
-export const CAMPAIGN_DAILY_SEND_LIMIT = 2000;
+export const MAX_CAMPAIGN_EMAILS_SENDABLE = 2000;
+export const MAX_CAMPAIGN_EMAILS_SENDABLE_UNVERIFIED = 500;
 export const CAMPAIGN_QUOTA_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 // Campaign sends are spread over time so a large campaign cannot exceed the

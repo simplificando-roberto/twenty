@@ -14,10 +14,13 @@ import { SaveMessageCampaignDraftInput } from 'src/engine/core-modules/emailing-
 import { SendEmailViaDomainInput } from 'src/engine/core-modules/emailing-domain/dtos/send-email-via-domain.input';
 import { SendEmailViaDomainOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-email-via-domain-output.dto';
 import { SendMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign.input';
+import { SendTestMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/send-test-message-campaign.input';
 import { SendMessageCampaignOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign-output.dto';
 import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
+import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
+import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
 import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import {
@@ -117,6 +120,34 @@ export class EmailingSendResolver {
       html: input.body,
       fromAddress: input.fromAddress,
     });
+  }
+
+  @Mutation(() => Boolean)
+  @RequireFeatureFlag(FeatureFlagKey.IS_EMAIL_GROUP_ENABLED)
+  async sendTestMessageCampaign(
+    @Args('input') input: SendTestMessageCampaignInput,
+    @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @AuthUser() currentUser: UserEntity,
+  ): Promise<boolean> {
+    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
+    await this.emailBillingService.validateEmailCreditsOrThrow(
+      currentWorkspace.id,
+    );
+
+    await this.messageCampaignService.sendTestEmail({
+      workspaceId: currentWorkspace.id,
+      toAddress: currentUser.email,
+      fromAddress: input.fromAddress,
+      subject: input.subject,
+      html: input.body,
+    });
+
+    await this.emailBillingService.billSentEmails({
+      workspaceId: currentWorkspace.id,
+      sentEmailCount: 1,
+    });
+
+    return true;
   }
 
   @Query(() => CampaignSendQuotaDTO)

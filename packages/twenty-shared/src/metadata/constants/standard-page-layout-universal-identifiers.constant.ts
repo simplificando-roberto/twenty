@@ -628,6 +628,14 @@ export const STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS = {
           },
         },
       },
+      composer: {
+        universalIdentifier: '3d1c9f42-6a7e-4c85-9b3f-1d2e5a7c8b40',
+        widgets: {
+          messageCampaign: {
+            universalIdentifier: '5f8a2c61-4b93-4d17-8e6a-9c0b3d5f7a21',
+          },
+        },
+      },
     },
   },
 };

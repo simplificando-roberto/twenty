@@ -23,4 +23,5 @@ export const WORKSPACE_ENTITY_NON_CACHED_PROPERTIES = [
   'defaultRole',
   'workspaceCustomApplication',
   'applications',
+  'messageCampaignDailySendLimit',
 ] as const satisfies ReadonlyArray<keyof WorkspaceEntity>;

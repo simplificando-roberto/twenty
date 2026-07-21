@@ -65,6 +65,20 @@ const MESSAGE_CAMPAIGN_PAGE_TABS = {
       },
     },
   },
+  composer: {
+    universalIdentifier:
+      STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.messageCampaignRecordPage.tabs
+        .composer.universalIdentifier,
+    ...TAB_PROPS.composer,
+    widgets: {
+      messageCampaign: {
+        universalIdentifier:
+          STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.messageCampaignRecordPage
+            .tabs.composer.widgets.messageCampaign.universalIdentifier,
+        ...WIDGET_PROPS.messageCampaign,
+      },
+    },
+  },
 } as const satisfies Record<string, StandardPageLayoutTabConfig>;
 
 export const STANDARD_MESSAGE_CAMPAIGN_PAGE_LAYOUT_CONFIG = {
@@ -75,6 +89,7 @@ export const STANDARD_MESSAGE_CAMPAIGN_PAGE_LAYOUT_CONFIG = {
   universalIdentifier:
     STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.messageCampaignRecordPage
       .universalIdentifier,
-  defaultTabUniversalIdentifier: null,
+  defaultTabUniversalIdentifier:
+    MESSAGE_CAMPAIGN_PAGE_TABS.composer.universalIdentifier,
   tabs: MESSAGE_CAMPAIGN_PAGE_TABS,
 } as const satisfies StandardPageLayoutConfig;
