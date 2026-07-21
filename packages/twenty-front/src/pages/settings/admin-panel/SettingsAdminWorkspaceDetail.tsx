@@ -10,6 +10,7 @@ import { currentUserState } from '@/auth/states/currentUserState';
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { billingState } from '@/client-config/states/billingState';
 import { canManageFeatureFlagsState } from '@/client-config/states/canManageFeatureFlagsState';
+import { SettingsAdminWorkspaceSendLimit } from '@/settings/admin-panel/components/SettingsAdminWorkspaceSendLimit';
 import { AI_ADMIN_PATH } from '@/settings/admin-panel/ai/constants/AiAdminPath';
 import { useApolloAdminClient } from '@/settings/admin-panel/apollo/hooks/useApolloAdminClient';
 import { SettingsAdminWorkspaceBillingContent } from '@/settings/admin-panel/components/SettingsAdminWorkspaceBillingContent';
@@ -327,51 +328,60 @@ export const SettingsAdminWorkspaceDetail = () => {
 
         {effectiveTabId === WORKSPACE_DETAIL_TAB_IDS.FEATURE_FLAGS &&
           workspace && (
-            <Section>
-              <H2Title
-                title={t`Feature Flags`}
-                description={t`Manage feature flags for this workspace`}
+            <>
+              <SettingsAdminWorkspaceSendLimit
+                workspaceId={workspace.id}
+                messageCampaignDailySendLimit={
+                  workspace.messageCampaignDailySendLimit
+                }
               />
-              <Table>
-                <TableBody>
-                  <TableRow
-                    gridAutoColumns="1fr 100px"
-                    mobileGridAutoColumns="1fr 80px"
-                  >
-                    <TableHeader>{t`Feature Flag`}</TableHeader>
-                    <TableHeader align="right">{t`Status`}</TableHeader>
-                  </TableRow>
-                  {workspace.featureFlags?.map((flag) => {
-                    const currentWorkspaceValue =
-                      currentWorkspace?.id === workspaceId
-                        ? currentWorkspace?.featureFlags?.find(
-                            (f) => f.key === flag.key,
-                          )?.value
-                        : undefined;
-                    const displayedValue = currentWorkspaceValue ?? flag.value;
-                    return (
-                      <TableRow
-                        gridAutoColumns="1fr 100px"
-                        mobileGridAutoColumns="1fr 80px"
-                        key={flag.key}
-                      >
-                        <TableCell>{flag.key}</TableCell>
-                        <TableCell align="right">
-                          {isDefined(flag.key) && (
-                            <Toggle
-                              value={displayedValue}
-                              onChange={(newValue) =>
-                                handleFeatureFlagUpdate(flag.key!, newValue)
-                              }
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </Section>
+              <Section>
+                <H2Title
+                  title={t`Feature Flags`}
+                  description={t`Manage feature flags for this workspace`}
+                />
+                <Table>
+                  <TableBody>
+                    <TableRow
+                      gridAutoColumns="1fr 100px"
+                      mobileGridAutoColumns="1fr 80px"
+                    >
+                      <TableHeader>{t`Feature Flag`}</TableHeader>
+                      <TableHeader align="right">{t`Status`}</TableHeader>
+                    </TableRow>
+                    {workspace.featureFlags?.map((flag) => {
+                      const currentWorkspaceValue =
+                        currentWorkspace?.id === workspaceId
+                          ? currentWorkspace?.featureFlags?.find(
+                              (f) => f.key === flag.key,
+                            )?.value
+                          : undefined;
+                      const displayedValue =
+                        currentWorkspaceValue ?? flag.value;
+                      return (
+                        <TableRow
+                          gridAutoColumns="1fr 100px"
+                          mobileGridAutoColumns="1fr 80px"
+                          key={flag.key}
+                        >
+                          <TableCell>{flag.key}</TableCell>
+                          <TableCell align="right">
+                            {isDefined(flag.key) && (
+                              <Toggle
+                                value={displayedValue}
+                                onChange={(newValue) =>
+                                  handleFeatureFlagUpdate(flag.key!, newValue)
+                                }
+                              />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </Section>
+            </>
           )}
 
         {effectiveTabId === WORKSPACE_DETAIL_TAB_IDS.CHATS && (
