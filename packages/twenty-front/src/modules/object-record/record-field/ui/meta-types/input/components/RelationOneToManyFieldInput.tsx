@@ -253,6 +253,16 @@ export const RelationOneToManyFieldInput = () => {
                 return currentRecord;
               }
               const currentFieldValue = currentRecord[fieldName];
+
+              if (
+                Array.isArray(currentFieldValue) &&
+                currentFieldValue.some(
+                  (junctionRecord) => junctionRecord?.id === createdJunction.id,
+                )
+              ) {
+                return currentRecord;
+              }
+
               const updatedJunctionRecords = Array.isArray(currentFieldValue)
                 ? [...currentFieldValue, createdJunction]
                 : [createdJunction];
