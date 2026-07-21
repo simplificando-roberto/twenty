@@ -7,6 +7,7 @@ import { v4, v5 } from 'uuid';
 import {
   CAMPAIGN_MESSAGE_DELIVERY_STATUS,
   CAMPAIGN_MESSAGE_ID_NAMESPACE,
+  CAMPAIGN_SEND_INTERVAL_MS,
   CAMPAIGN_STATS_REFRESH_DELAY_MS,
   CAMPAIGN_STATUS,
   MATERIALIZE_CAMPAIGN_JOB,
@@ -56,6 +57,7 @@ import { MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-ob
 import { createHtmlToTextConverter } from 'src/modules/messaging/message-import-manager/utils/create-html-to-text-converter.util';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { MessageParticipantRole } from 'twenty-shared/types';
+import { emailSchema } from 'twenty-shared/utils';
 import { getDomainFromEmail } from 'src/utils/get-domain-from-email';
 
 type SendCampaignArgs = {
@@ -281,7 +283,7 @@ export class MessageCampaignService {
         });
       }
 
-      for (const recipient of allRecipients) {
+      for (const [index, recipient] of allRecipients.entries()) {
         await this.messageQueueService.add<SendCampaignEmailJobData>(
           SEND_CAMPAIGN_EMAIL_JOB,
           {
@@ -292,7 +294,10 @@ export class MessageCampaignService {
             recipientEmail: recipient.email,
             emailingDomainId,
           },
-          { retryLimit: 3 },
+          {
+            retryLimit: 3,
+            delay: index * CAMPAIGN_SEND_INTERVAL_MS,
+          },
         );
       }
 
@@ -316,15 +321,23 @@ export class MessageCampaignService {
         MessageWorkspaceEntity,
       );
 
-      const message = await messageRepository.findOne({
-        where: { id: messageId },
-      });
+      // Claim the message before sending. Reading the status and then sending
+      // leaves a window where two workers both see QUEUED and both send, and a
+      // duplicate marketing email costs far more (complaints, reputation) than
+      // a rare unsent one. Any failure below moves it back to FAILED, which is
+      // claimable again on retry.
+      const claim = await messageRepository.update(
+        {
+          id: messageId,
+          deliveryStatus: In([
+            CAMPAIGN_MESSAGE_DELIVERY_STATUS.QUEUED,
+            CAMPAIGN_MESSAGE_DELIVERY_STATUS.FAILED,
+          ]),
+        },
+        { deliveryStatus: CAMPAIGN_MESSAGE_DELIVERY_STATUS.SENT },
+      );
 
-      if (
-        message === null ||
-        (message.deliveryStatus !== CAMPAIGN_MESSAGE_DELIVERY_STATUS.QUEUED &&
-          message.deliveryStatus !== CAMPAIGN_MESSAGE_DELIVERY_STATUS.FAILED)
-      ) {
+      if (claim.affected === 0) {
         return;
       }
 
@@ -369,6 +382,14 @@ export class MessageCampaignService {
       const fromAddress = campaign.fromAddress?.primaryEmail ?? '';
       const unsubscribeTopicId = campaign.unsubscribeTopicId ?? undefined;
 
+      if (!emailSchema.safeParse(recipientEmail).success) {
+        await messageRepository.update(messageId, {
+          deliveryStatus: CAMPAIGN_MESSAGE_DELIVERY_STATUS.SKIPPED,
+        });
+
+        return;
+      }
+
       const hasEmailCredits =
         await this.emailBillingService.hasEmailCredits(workspaceId);
 
@@ -394,6 +415,7 @@ export class MessageCampaignService {
               text,
               html,
               unsubscribeTopicId,
+              isBulk: true,
             },
           );
         } catch (error) {

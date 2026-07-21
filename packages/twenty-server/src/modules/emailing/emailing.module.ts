@@ -13,9 +13,13 @@ import { PermissionsModule } from 'src/engine/metadata-modules/permissions/permi
 import { UserRoleModule } from 'src/engine/metadata-modules/user-role/user-role.module';
 import { provideWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/provide-workspace-scoped-repository';
 import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache.module';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 import { WorkspaceEventEmitterModule } from 'src/engine/workspace-event-emitter/workspace-event-emitter.module';
 import { UnsubscribeController } from 'src/modules/emailing/controllers/unsubscribe.controller';
+import { EmailingDomainReverificationCronCommand } from 'src/modules/emailing/crons/commands/emailing-domain-reverification.cron.command';
+import { EmailingDomainReverificationCronJob } from 'src/modules/emailing/crons/jobs/emailing-domain-reverification.cron.job';
 import { EmailingSendResolver } from 'src/modules/emailing/resolvers/emailing-send.resolver';
+import { MessageSuppressionResolver } from 'src/modules/emailing/resolvers/message-suppression.resolver';
 import { UnsubscribeTopicResolver } from 'src/modules/emailing/resolvers/unsubscribe-topic.resolver';
 import { EmailBillingService } from 'src/modules/emailing/services/email-billing.service';
 import { EmailingDomainSenderService } from 'src/modules/emailing/services/emailing-domain-sender.service';
@@ -39,10 +43,13 @@ import { UnsubscribeTopicService } from 'src/modules/emailing/services/unsubscri
       EmailingDomainEntity,
       MessageSuppressionEntity,
       UnsubscribeTopicEntity,
+      WorkspaceEntity,
     ]),
   ],
   controllers: [UnsubscribeController],
   providers: [
+    EmailingDomainReverificationCronJob,
+    EmailingDomainReverificationCronCommand,
     EmailBillingService,
     MessageCampaignService,
     MessageCampaignStatisticsService,
@@ -50,12 +57,14 @@ import { UnsubscribeTopicService } from 'src/modules/emailing/services/unsubscri
     UnsubscribeTopicService,
     EmailingDomainSenderService,
     EmailingSendResolver,
+    MessageSuppressionResolver,
     UnsubscribeTopicResolver,
     provideWorkspaceScopedRepository(EmailingDomainEntity),
     provideWorkspaceScopedRepository(MessageSuppressionEntity),
     provideWorkspaceScopedRepository(UnsubscribeTopicEntity),
   ],
   exports: [
+    EmailingDomainReverificationCronCommand,
     EmailingDomainSenderService,
     MessageCampaignService,
     MessageCampaignStatisticsService,

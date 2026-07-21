@@ -14,6 +14,13 @@ export const GET_ALL_EMAILING_DOMAINS = gql`
         priority
         status
       }
+      emailAuthenticationRecords {
+        type
+        key
+        value
+        priority
+        status
+      }
       createdAt
       updatedAt
     }
