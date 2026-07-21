@@ -115,6 +115,9 @@ import { AddCreatedWorkspaceActivationStatusSlowInstanceCommand } from './2-22/2
 import { UnlistUnclaimedNpmApplicationRegistrationsSlowInstanceCommand } from './2-23/2-23-instance-command-slow-1784322591746-unlist-unclaimed-npm-application-registrations';
 import { BackfillCreatedWorkspaceActivationStatusSlowInstanceCommand } from './2-23/2-23-instance-command-slow-1784286705000-backfill-created-workspace-activation-status';
 import { AddAutoUpgradeToApplicationFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784297307235-add-auto-upgrade-to-application';
+import { AddEmailingDomainSenderIdentityFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784286709000-add-emailing-domain-sender-identity';
+import { AddMessageCampaignWidgetTypeFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784286710000-add-message-campaign-widget-type';
+import { AddWorkspaceMessageCampaignDailySendLimitFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784286711000-add-workspace-message-campaign-daily-send-limit';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -232,4 +235,7 @@ export const INSTANCE_COMMANDS = [
   UnlistUnclaimedNpmApplicationRegistrationsSlowInstanceCommand,
   BackfillCreatedWorkspaceActivationStatusSlowInstanceCommand,
   AddAutoUpgradeToApplicationFastInstanceCommand,
+  AddEmailingDomainSenderIdentityFastInstanceCommand,
+  AddMessageCampaignWidgetTypeFastInstanceCommand,
+  AddWorkspaceMessageCampaignDailySendLimitFastInstanceCommand,
 ];
