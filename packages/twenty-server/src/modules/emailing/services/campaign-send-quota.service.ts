@@ -1,9 +1,9 @@
-import { Injectable, Type } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { FeatureFlagKey } from 'twenty-shared/types';
 import { isDefined } from 'twenty-shared/utils';
-import { MoreThan, Not, IsNull, Repository, type ObjectLiteral } from 'typeorm';
+import { MoreThan, Not, IsNull, Repository } from 'typeorm';
 
 import { NO_BILLING_SUBSCRIPTION } from 'src/engine/core-modules/billing/constants/no-billing-subscription.constant';
 import { BillingService } from 'src/engine/core-modules/billing/services/billing.service';
@@ -20,6 +20,7 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 import { GlobalWorkspaceOrmManager } from 'src/engine/twenty-orm/global-workspace-datasource/global-workspace-orm.manager';
+import { buildSystemAuthContext } from 'src/engine/twenty-orm/utils/build-system-auth-context.util';
 import { WorkspaceCacheService } from 'src/engine/workspace-cache/services/workspace-cache.service';
 import { MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-objects/message.workspace-entity';
 
@@ -99,27 +100,25 @@ export class CampaignSendQuotaService {
   }
 
   private async countRecentlySentEmails(workspaceId: string): Promise<number> {
-    const messageRepository = await this.getSystemRepository(
-      workspaceId,
-      MessageWorkspaceEntity,
-    );
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const messageRepository =
+          await this.globalWorkspaceOrmManager.getRepository(
+            workspaceId,
+            MessageWorkspaceEntity,
+            { shouldBypassPermissionChecks: true },
+          );
 
-    return messageRepository.count({
-      where: {
-        messageCampaignId: Not(IsNull()),
-        createdAt: MoreThan(
-          new Date(Date.now() - CAMPAIGN_QUOTA_WINDOW_MS).toISOString(),
-        ),
+        return messageRepository.count({
+          where: {
+            messageCampaignId: Not(IsNull()),
+            createdAt: MoreThan(
+              new Date(Date.now() - CAMPAIGN_QUOTA_WINDOW_MS).toISOString(),
+            ),
+          },
+        });
       },
-    });
-  }
-
-  private getSystemRepository<T extends ObjectLiteral>(
-    workspaceId: string,
-    entity: Type<T>,
-  ) {
-    return this.globalWorkspaceOrmManager.getRepository(workspaceId, entity, {
-      shouldBypassPermissionChecks: true,
-    });
+      buildSystemAuthContext(workspaceId),
+    );
   }
 }
