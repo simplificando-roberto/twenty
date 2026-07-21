@@ -104,7 +104,10 @@ export const SendTestCampaignModal = ({
       isClosable={true}
       padding="large"
     >
-      <H1Title title={t`Send test email`} fontColor={H1TitleFontColor.Primary} />
+      <H1Title
+        title={t`Send test email`}
+        fontColor={H1TitleFontColor.Primary}
+      />
       <StyledContent>
         <StyledLabel htmlFor="send-test-campaign-addresses">
           {t`Email addresses`}
