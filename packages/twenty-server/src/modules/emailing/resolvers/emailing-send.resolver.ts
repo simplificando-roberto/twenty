@@ -7,10 +7,13 @@ import { FeatureFlagKey } from 'twenty-shared/types';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { CampaignAudiencePreviewDTO } from 'src/engine/core-modules/emailing-domain/dtos/campaign-audience-preview.dto';
 import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
+import { MessageCampaignDraftDTO } from 'src/engine/core-modules/emailing-domain/dtos/message-campaign-draft.dto';
 import { PreviewMessageCampaignAudienceInput } from 'src/engine/core-modules/emailing-domain/dtos/preview-message-campaign-audience.input';
+import { SaveMessageCampaignDraftInput } from 'src/engine/core-modules/emailing-domain/dtos/save-message-campaign-draft.input';
 import { SendEmailViaDomainInput } from 'src/engine/core-modules/emailing-domain/dtos/send-email-via-domain.input';
 import { SendEmailViaDomainOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-email-via-domain-output.dto';
 import { SendMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign.input';
+import { SendTestMessageCampaignInput } from 'src/engine/core-modules/emailing-domain/dtos/send-test-message-campaign.input';
 import { SendMessageCampaignOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign-output.dto';
 import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
@@ -84,12 +87,61 @@ export class EmailingSendResolver {
     return this.messageCampaignService.send({
       workspaceId: currentWorkspace.id,
       userWorkspaceId,
+      campaignId: input.campaignId,
       unsubscribeTopicId: input.unsubscribeTopicId,
       listId: input.listId,
       subject: input.subject,
       html: input.body,
       fromAddress: input.fromAddress,
     });
+  }
+
+  @Mutation(() => MessageCampaignDraftDTO)
+  @RequireFeatureFlag(FeatureFlagKey.IS_EMAIL_GROUP_ENABLED)
+  async saveMessageCampaignDraft(
+    @Args('input') input: SaveMessageCampaignDraftInput,
+    @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+    @AuthUserWorkspaceId() userWorkspaceId: string,
+  ): Promise<MessageCampaignDraftDTO> {
+    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
+
+    return this.messageCampaignService.saveDraft({
+      workspaceId: currentWorkspace.id,
+      userWorkspaceId,
+      campaignId: input.campaignId,
+      listId: input.listId,
+      unsubscribeTopicId: input.unsubscribeTopicId,
+      subject: input.subject,
+      html: input.body,
+      fromAddress: input.fromAddress,
+    });
+  }
+
+  @Mutation(() => Boolean)
+  @RequireFeatureFlag(FeatureFlagKey.IS_EMAIL_GROUP_ENABLED)
+  async sendTestMessageCampaign(
+    @Args('input') input: SendTestMessageCampaignInput,
+    @AuthWorkspace() currentWorkspace: WorkspaceEntity,
+  ): Promise<boolean> {
+    this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
+    await this.emailBillingService.validateEmailCreditsOrThrow(
+      currentWorkspace.id,
+    );
+
+    await this.messageCampaignService.sendTestEmail({
+      workspaceId: currentWorkspace.id,
+      toAddresses: input.toAddresses,
+      fromAddress: input.fromAddress,
+      subject: input.subject,
+      html: input.body,
+    });
+
+    await this.emailBillingService.billSentEmails({
+      workspaceId: currentWorkspace.id,
+      sentEmailCount: input.toAddresses.length,
+    });
+
+    return true;
   }
 
   @Query(() => CampaignAudiencePreviewDTO)

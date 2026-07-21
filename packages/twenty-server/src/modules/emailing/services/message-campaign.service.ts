@@ -22,6 +22,10 @@ import {
 import { EmailingDomainStatus } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-status.type';
 import { type EmailingDomainSendEmailResult } from 'src/engine/core-modules/emailing-domain/drivers/types/emailing-domain-send-email-result.type';
 import { EmailingDomainEntity } from 'src/engine/core-modules/emailing-domain/emailing-domain.entity';
+import {
+  EmailGroupAccessException,
+  EmailGroupAccessExceptionCode,
+} from 'src/engine/core-modules/emailing-domain/exceptions/email-group-access.exception';
 import { type CampaignRecipient } from 'src/engine/core-modules/emailing-domain/types/campaign-recipient.type';
 import { type CampaignSkippedBreakdown } from 'src/engine/core-modules/emailing-domain/types/campaign-skipped-breakdown.type';
 import { type MaterializeCampaignJobData } from 'src/engine/core-modules/emailing-domain/types/materialize-campaign-job-data.type';
@@ -57,16 +61,44 @@ import { MessageWorkspaceEntity } from 'src/modules/messaging/common/standard-ob
 import { createHtmlToTextConverter } from 'src/modules/messaging/message-import-manager/utils/create-html-to-text-converter.util';
 import { PersonWorkspaceEntity } from 'src/modules/person/standard-objects/person.workspace-entity';
 import { MessageParticipantRole } from 'twenty-shared/types';
-import { emailSchema } from 'twenty-shared/utils';
+import { emailSchema, isDefined } from 'twenty-shared/utils';
 import { getDomainFromEmail } from 'src/utils/get-domain-from-email';
 
 type SendCampaignArgs = {
   workspaceId: string;
   userWorkspaceId: string;
+  campaignId?: string;
   listId: string;
   subject: string;
   html: string;
   fromAddress: string;
+  unsubscribeTopicId?: string;
+};
+
+type SaveCampaignDraftArgs = {
+  workspaceId: string;
+  userWorkspaceId: string;
+  campaignId?: string;
+  listId?: string;
+  subject?: string;
+  html?: string;
+  fromAddress?: string;
+  unsubscribeTopicId?: string;
+};
+
+type SendTestEmailArgs = {
+  workspaceId: string;
+  toAddresses: string[];
+  fromAddress: string;
+  subject: string;
+  html: string;
+};
+
+type CampaignContent = {
+  subject?: string;
+  html?: string;
+  fromAddress?: string;
+  listId?: string;
   unsubscribeTopicId?: string;
 };
 
@@ -93,6 +125,20 @@ const toRawRecipient = (person: {
 }): RawCampaignRecipient => ({
   personId: person.id,
   email: person.emails?.primaryEmail ?? null,
+});
+
+const toCampaignColumns = ({
+  subject,
+  html,
+  fromAddress,
+  listId,
+  unsubscribeTopicId,
+}: CampaignContent) => ({
+  subject: subject ?? null,
+  bodyTemplate: html ?? null,
+  fromAddress: { primaryEmail: fromAddress ?? '', additionalEmails: null },
+  listId: listId ?? null,
+  unsubscribeTopicId: unsubscribeTopicId ?? null,
 });
 
 @Injectable()
@@ -138,6 +184,7 @@ export class MessageCampaignService {
   async send({
     workspaceId,
     userWorkspaceId,
+    campaignId: draftCampaignId,
     unsubscribeTopicId,
     subject,
     html,
@@ -176,15 +223,26 @@ export class MessageCampaignService {
             MAX_CAMPAIGN_RECIPIENTS,
           );
 
-          const newCampaignId = await this.createCampaign({
-            workspaceId,
-            roleId,
-            subject,
-            html,
-            fromAddress,
-            unsubscribeTopicId,
-            listId,
-          });
+          const newCampaignId = isDefined(draftCampaignId)
+            ? await this.startDraftCampaign({
+                workspaceId,
+                roleId,
+                campaignId: draftCampaignId,
+                subject,
+                html,
+                fromAddress,
+                unsubscribeTopicId,
+                listId,
+              })
+            : await this.createCampaign({
+                workspaceId,
+                roleId,
+                subject,
+                html,
+                fromAddress,
+                unsubscribeTopicId,
+                listId,
+              });
 
           return {
             campaignId: newCampaignId,
@@ -522,6 +580,84 @@ export class MessageCampaignService {
     }, buildSystemAuthContext(workspaceId));
   }
 
+  async saveDraft({
+    workspaceId,
+    userWorkspaceId,
+    campaignId,
+    ...content
+  }: SaveCampaignDraftArgs): Promise<{ id: string }> {
+    const roleId = await this.userRoleService.getRoleIdForUserWorkspace({
+      workspaceId,
+      userWorkspaceId,
+    });
+
+    return this.globalWorkspaceOrmManager.executeInWorkspaceContext(
+      async () => {
+        const campaignRepository = await this.getUserRepository(
+          workspaceId,
+          MessageCampaignWorkspaceEntity,
+          roleId,
+        );
+
+        if (!isDefined(campaignId)) {
+          const { identifiers } = await campaignRepository.insert({
+            ...toCampaignColumns(content),
+            status: CAMPAIGN_STATUS.DRAFT,
+          });
+
+          return { id: identifiers[0].id };
+        }
+
+        const claim = await campaignRepository.update(
+          { id: campaignId, status: CAMPAIGN_STATUS.DRAFT },
+          toCampaignColumns(content),
+        );
+
+        if (claim.affected === 0) {
+          throw new EmailGroupAccessException(
+            `Campaign ${campaignId} is not a draft and cannot be autosaved`,
+            EmailGroupAccessExceptionCode.MESSAGE_CAMPAIGN_NOT_EDITABLE,
+          );
+        }
+
+        return { id: campaignId };
+      },
+    );
+  }
+
+  private async startDraftCampaign({
+    workspaceId,
+    roleId,
+    campaignId,
+    ...content
+  }: {
+    workspaceId: string;
+    roleId: string;
+    campaignId: string;
+  } & CampaignContent): Promise<string> {
+    const campaignRepository = await this.getUserRepository(
+      workspaceId,
+      MessageCampaignWorkspaceEntity,
+      roleId,
+    );
+
+    // A campaign that already left DRAFT is either sending or sent, so claiming
+    // it conditionally keeps a second send from re-queueing the same recipients.
+    const claim = await campaignRepository.update(
+      { id: campaignId, status: CAMPAIGN_STATUS.DRAFT },
+      { ...toCampaignColumns(content), status: CAMPAIGN_STATUS.SENDING },
+    );
+
+    if (claim.affected === 0) {
+      throw new EmailGroupAccessException(
+        `Campaign ${campaignId} is not a draft and cannot be sent again`,
+        EmailGroupAccessExceptionCode.MESSAGE_CAMPAIGN_NOT_EDITABLE,
+      );
+    }
+
+    return campaignId;
+  }
+
   private async createCampaign({
     workspaceId,
     roleId,
@@ -851,6 +987,46 @@ export class MessageCampaignService {
     });
 
     return people.map(toRawRecipient);
+  }
+
+  async sendTestEmail({
+    workspaceId,
+    toAddresses,
+    fromAddress,
+    subject,
+    html,
+  }: SendTestEmailArgs): Promise<void> {
+    const fromDomain = getDomainFromEmail(fromAddress)?.toLowerCase();
+
+    const emailingDomain = await this.emailingDomainRepository.findOne(
+      workspaceId,
+      { where: { domain: fromDomain, status: EmailingDomainStatus.VERIFIED } },
+    );
+
+    if (emailingDomain === null) {
+      throw new EmailGroupAccessException(
+        `No verified emailing domain matches the from address ${fromAddress}`,
+        EmailGroupAccessExceptionCode.CAMPAIGN_TEST_SEND_NOT_POSSIBLE,
+      );
+    }
+
+    // A test send previews the template with empty variables, so a placeholder
+    // that is never populated is visible before the campaign goes out.
+    const variables = this.buildTemplateVariables(null);
+
+    await this.emailingDomainSenderService.sendEmail(
+      workspaceId,
+      emailingDomain.id,
+      {
+        from: fromAddress,
+        to: toAddresses,
+        subject: `[Test] ${renderCampaignTemplate(subject, variables, {
+          escapeValues: false,
+        })}`,
+        html: renderCampaignTemplate(html, variables, { escapeValues: true }),
+        text: this.htmlToText(html),
+      },
+    );
   }
 
   private buildTemplateVariables(

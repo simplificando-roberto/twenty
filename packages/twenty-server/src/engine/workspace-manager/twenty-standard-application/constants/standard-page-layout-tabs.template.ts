@@ -158,6 +158,12 @@ export const TAB_PROPS = {
     icon: 'IconSettings',
     layoutMode: PageLayoutTabLayoutMode.CANVAS,
   },
+  composer: {
+    title: 'Composer',
+    position: 20,
+    icon: 'IconPencil',
+    layoutMode: PageLayoutTabLayoutMode.CANVAS,
+  },
 } as const;
 
 export const WIDGET_PROPS = {
@@ -238,5 +244,11 @@ export const WIDGET_PROPS = {
     type: WidgetType.EMAIL_THREAD,
     gridPosition: GRID_POSITIONS.FULL_WIDTH,
     position: VERTICAL_LIST_LAYOUT_POSITIONS.SECOND,
+  },
+  messageCampaign: {
+    title: 'Composer',
+    type: WidgetType.MESSAGE_CAMPAIGN,
+    gridPosition: GRID_POSITIONS.FULL_WIDTH,
+    position: CANVAS_LAYOUT_POSITIONS.DEFAULT,
   },
 } as const;

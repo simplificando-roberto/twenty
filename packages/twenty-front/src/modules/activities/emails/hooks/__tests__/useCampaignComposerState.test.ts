@@ -1,15 +1,19 @@
 import { act, renderHook } from '@testing-library/react';
 
 import { useCampaignComposerState } from '@/activities/emails/hooks/useCampaignComposerState';
+import { useCampaignDraftAutosave } from '@/activities/emails/hooks/useCampaignDraftAutosave';
 import { useSendMessageCampaign } from '@/activities/emails/hooks/useSendMessageCampaign';
 
 jest.mock('@/activities/emails/hooks/useSendMessageCampaign');
+jest.mock('@/activities/emails/hooks/useCampaignDraftAutosave');
 
 const sendMessageCampaignMock = jest.fn(
   (): Promise<boolean> => Promise.resolve(true),
 );
+const stopAutosaveMock = jest.fn();
 
 const mockedUseSendMessageCampaign = jest.mocked(useSendMessageCampaign);
+const mockedUseCampaignDraftAutosave = jest.mocked(useCampaignDraftAutosave);
 
 const fillSendableFields = (result: {
   current: ReturnType<typeof useCampaignComposerState>;
@@ -27,6 +31,10 @@ describe('useCampaignComposerState', () => {
     mockedUseSendMessageCampaign.mockReturnValue({
       sendMessageCampaign: sendMessageCampaignMock,
       loading: false,
+    });
+    mockedUseCampaignDraftAutosave.mockReturnValue({
+      campaignId: 'draft-1',
+      stopAutosave: stopAutosaveMock,
     });
   });
 
@@ -76,6 +84,7 @@ describe('useCampaignComposerState', () => {
     });
 
     expect(sendMessageCampaignMock).toHaveBeenCalledWith({
+      campaignId: 'draft-1',
       listId: 'list-1',
       unsubscribeTopicId: 'topic-1',
       subject: 'Hello',
@@ -109,6 +118,18 @@ describe('useCampaignComposerState', () => {
     });
 
     expect(sendMessageCampaignMock).not.toHaveBeenCalled();
+  });
+
+  it('should stop autosaving when the campaign is sent', async () => {
+    const { result } = renderHook(() => useCampaignComposerState({}));
+
+    fillSendableFields(result);
+
+    await act(async () => {
+      await result.current.handleSend();
+    });
+
+    expect(stopAutosaveMock).toHaveBeenCalledTimes(1);
   });
 
   it('should not call onSent when the send fails', async () => {
