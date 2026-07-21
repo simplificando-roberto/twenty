@@ -19,6 +19,10 @@ const MESSAGE_CAMPAIGN_PAGE_LAYOUT_UNIVERSAL_IDENTIFIER =
   STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.messageCampaignRecordPage
     .universalIdentifier;
 
+const HOME_TAB_UNIVERSAL_IDENTIFIER =
+  STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.messageCampaignRecordPage.tabs.home
+    .universalIdentifier;
+
 const COMPOSER_TAB_UNIVERSAL_IDENTIFIER =
   STANDARD_PAGE_LAYOUT_UNIVERSAL_IDENTIFIERS.messageCampaignRecordPage.tabs
     .composer.universalIdentifier;
@@ -96,25 +100,36 @@ export class AddMessageCampaignComposerTabCommand extends ProvisionedWorkspaceCo
         universalIdentifiers: [COMPOSER_WIDGET_UNIVERSAL_IDENTIFIER],
       });
 
-    const composerTabId =
-      pageLayoutTabsToCreate[0]?.id ??
-      flatPageLayoutTabMaps.byUniversalIdentifier[
-        COMPOSER_TAB_UNIVERSAL_IDENTIFIER
-      ]?.id;
+    // The composer is the only tab, so the record page renders it full width
+    // instead of pinning the fields tab down the left side.
+    const existingHomeTab =
+      flatPageLayoutTabMaps.byUniversalIdentifier[HOME_TAB_UNIVERSAL_IDENTIFIER];
 
-    const shouldUpdateDefaultTab =
-      isDefined(composerTabId) &&
-      existingPageLayout.defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier !==
-        COMPOSER_TAB_UNIVERSAL_IDENTIFIER;
+    const pageLayoutTabsToDelete = isDefined(existingHomeTab)
+      ? [existingHomeTab]
+      : [];
+
+    const pageLayoutWidgetsToDelete = isDefined(existingHomeTab)
+      ? Object.values(flatPageLayoutWidgetMaps.byUniversalIdentifier).filter(
+          (widget): widget is FlatPageLayoutWidget =>
+            isDefined(widget) && widget.pageLayoutTabId === existingHomeTab.id,
+        )
+      : [];
+
+    const shouldUpdateDefaultTab = isDefined(
+      existingPageLayout.defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier,
+    );
 
     const totalOperationCount =
       pageLayoutTabsToCreate.length +
       pageLayoutWidgetsToCreate.length +
+      pageLayoutTabsToDelete.length +
+      pageLayoutWidgetsToDelete.length +
       (shouldUpdateDefaultTab ? 1 : 0);
 
     if (totalOperationCount === 0) {
       this.logger.log(
-        `Message campaign composer tab already present for workspace ${workspaceId}, skipping`,
+        `Message campaign composer tab already the only tab for workspace ${workspaceId}, skipping`,
       );
 
       return;
@@ -138,12 +153,12 @@ export class AddMessageCampaignComposerTabCommand extends ProvisionedWorkspaceCo
           allFlatEntityOperationByMetadataName: {
             pageLayoutTab: {
               flatEntityToCreate: pageLayoutTabsToCreate,
-              flatEntityToDelete: [],
+              flatEntityToDelete: pageLayoutTabsToDelete,
               flatEntityToUpdate: [],
             },
             pageLayoutWidget: {
               flatEntityToCreate: pageLayoutWidgetsToCreate,
-              flatEntityToDelete: [],
+              flatEntityToDelete: pageLayoutWidgetsToDelete,
               flatEntityToUpdate: [],
             },
             pageLayout: {
@@ -154,7 +169,7 @@ export class AddMessageCampaignComposerTabCommand extends ProvisionedWorkspaceCo
                     {
                       ...existingPageLayout,
                       defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier:
-                        COMPOSER_TAB_UNIVERSAL_IDENTIFIER,
+                        null,
                     },
                   ]
                 : [],
