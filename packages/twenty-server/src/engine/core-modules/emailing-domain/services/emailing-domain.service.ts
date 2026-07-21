@@ -24,7 +24,6 @@ import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scope
 type UpdateSenderIdentityArgs = {
   workspaceId: string;
   emailingDomainId: string;
-  senderPostalAddress?: string;
   senderDisplayName?: string;
 };
 
@@ -137,7 +136,6 @@ export class EmailingDomainService {
   async updateSenderIdentity({
     workspaceId,
     emailingDomainId,
-    senderPostalAddress,
     senderDisplayName,
   }: UpdateSenderIdentityArgs): Promise<EmailingDomainEntity> {
     const emailingDomain = await this.findEmailingDomainByIdOrThrow(
@@ -149,9 +147,6 @@ export class EmailingDomainService {
       workspaceId,
       { id: emailingDomain.id },
       {
-        ...(isDefined(senderPostalAddress)
-          ? { senderPostalAddress: senderPostalAddress.trim() }
-          : {}),
         ...(isDefined(senderDisplayName)
           ? { senderDisplayName: senderDisplayName.trim() || null }
           : {}),

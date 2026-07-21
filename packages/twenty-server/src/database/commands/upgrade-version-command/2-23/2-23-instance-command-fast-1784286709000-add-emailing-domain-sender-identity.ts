@@ -9,9 +9,6 @@ export class AddEmailingDomainSenderIdentityFastInstanceCommand
 {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      'ALTER TABLE "core"."emailingDomain" ADD COLUMN IF NOT EXISTS "senderPostalAddress" character varying',
-    );
-    await queryRunner.query(
       'ALTER TABLE "core"."emailingDomain" ADD COLUMN IF NOT EXISTS "senderDisplayName" character varying',
     );
   }
@@ -19,9 +16,6 @@ export class AddEmailingDomainSenderIdentityFastInstanceCommand
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       'ALTER TABLE "core"."emailingDomain" DROP COLUMN IF EXISTS "senderDisplayName"',
-    );
-    await queryRunner.query(
-      'ALTER TABLE "core"."emailingDomain" DROP COLUMN IF EXISTS "senderPostalAddress"',
     );
   }
 }

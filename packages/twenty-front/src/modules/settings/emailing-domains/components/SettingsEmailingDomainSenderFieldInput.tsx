@@ -21,7 +21,7 @@ const StyledInputContainer = styled.div`
   margin-right: ${themeCssVariables.spacing[2]};
 `;
 
-type SenderField = 'senderPostalAddress' | 'senderDisplayName';
+type SenderField = 'senderDisplayName';
 
 type SettingsEmailingDomainSenderFieldInputProps = {
   emailingDomainId: string;

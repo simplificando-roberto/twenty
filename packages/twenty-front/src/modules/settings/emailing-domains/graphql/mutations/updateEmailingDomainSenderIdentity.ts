@@ -6,7 +6,6 @@ export const UPDATE_EMAILING_DOMAIN_SENDER_IDENTITY = gql`
   ) {
     updateEmailingDomainSenderIdentity(input: $input) {
       id
-      senderPostalAddress
       senderDisplayName
     }
   }

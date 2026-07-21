@@ -206,12 +206,6 @@ export class MessageCampaignService {
       );
     }
 
-    if (!isNonEmptyString(emailingDomain.senderPostalAddress)) {
-      throw new Error(
-        `Emailing domain ${emailingDomain.domain} has no sender postal address, which is required in every bulk email`,
-      );
-    }
-
     const quota = await this.campaignSendQuotaService.getQuota(workspaceId);
 
     const roleId = await this.userRoleService.getRoleIdForUserWorkspace({

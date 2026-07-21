@@ -39,15 +39,9 @@ export class UnsubscribeContentService {
 
     return {
       ...email,
-      text: `${email.text}${buildUnsubscribeTextFooter(
-        unsubscribeUrls.webUrl,
-        email.emailingDomain.senderPostalAddress,
-      )}`,
+      text: `${email.text}${buildUnsubscribeTextFooter(unsubscribeUrls.webUrl)}`,
       html: isNonEmptyString(email.html)
-        ? `${email.html}${buildUnsubscribeHtmlFooter(
-            unsubscribeUrls.webUrl,
-            email.emailingDomain.senderPostalAddress,
-          )}`
+        ? `${email.html}${buildUnsubscribeHtmlFooter(unsubscribeUrls.webUrl)}`
         : email.html,
       headers: [
         ...(email.headers ?? []),

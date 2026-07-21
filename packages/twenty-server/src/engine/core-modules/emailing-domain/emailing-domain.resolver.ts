@@ -69,7 +69,6 @@ export class EmailingDomainResolver {
     return this.emailingDomainService.updateSenderIdentity({
       workspaceId: currentWorkspace.id,
       emailingDomainId: input.emailingDomainId,
-      senderPostalAddress: input.senderPostalAddress,
       senderDisplayName: input.senderDisplayName,
     });
   }
