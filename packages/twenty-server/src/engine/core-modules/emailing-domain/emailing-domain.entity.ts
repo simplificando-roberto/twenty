@@ -57,6 +57,9 @@ export class EmailingDomainEntity extends WorkspaceRelatedEntity {
   senderPostalAddress: string | null;
 
   @Column({ type: 'varchar', nullable: true })
+  senderDisplayName: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
   unsubscribeHostname: string | null;
 
   @Column({ type: 'varchar', nullable: true })

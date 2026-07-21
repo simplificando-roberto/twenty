@@ -21,6 +21,13 @@ import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.ent
 import { InjectWorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/inject-workspace-scoped-repository.decorator';
 import { WorkspaceScopedRepository } from 'src/engine/twenty-orm/workspace-scoped-repository/workspace-scoped-repository';
 
+type UpdateSenderIdentityArgs = {
+  workspaceId: string;
+  emailingDomainId: string;
+  senderPostalAddress?: string;
+  senderDisplayName?: string;
+};
+
 @Injectable()
 export class EmailingDomainService {
   private readonly logger = new Logger(EmailingDomainService.name);
@@ -127,11 +134,12 @@ export class EmailingDomainService {
     });
   }
 
-  async updateSenderPostalAddress(
-    workspaceId: string,
-    emailingDomainId: string,
-    senderPostalAddress: string,
-  ): Promise<EmailingDomainEntity> {
+  async updateSenderIdentity({
+    workspaceId,
+    emailingDomainId,
+    senderPostalAddress,
+    senderDisplayName,
+  }: UpdateSenderIdentityArgs): Promise<EmailingDomainEntity> {
     const emailingDomain = await this.findEmailingDomainByIdOrThrow(
       workspaceId,
       emailingDomainId,
@@ -140,7 +148,14 @@ export class EmailingDomainService {
     await this.emailingDomainRepository.update(
       workspaceId,
       { id: emailingDomain.id },
-      { senderPostalAddress: senderPostalAddress.trim() },
+      {
+        ...(isDefined(senderPostalAddress)
+          ? { senderPostalAddress: senderPostalAddress.trim() }
+          : {}),
+        ...(isDefined(senderDisplayName)
+          ? { senderDisplayName: senderDisplayName.trim() || null }
+          : {}),
+      },
     );
 
     return this.findEmailingDomainByIdOrThrow(workspaceId, emailingDomainId);

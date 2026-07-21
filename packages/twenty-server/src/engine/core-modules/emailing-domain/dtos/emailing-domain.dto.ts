@@ -33,4 +33,7 @@ export class EmailingDomainDTO {
 
   @Field(() => String, { nullable: true })
   senderPostalAddress: string | null;
+
+  @Field(() => String, { nullable: true })
+  senderDisplayName: string | null;
 }

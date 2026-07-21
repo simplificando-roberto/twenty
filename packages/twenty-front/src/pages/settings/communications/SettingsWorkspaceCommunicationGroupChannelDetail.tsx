@@ -9,7 +9,7 @@ import { useMyMessageChannels } from '@/settings/accounts/hooks/useMyMessageChan
 import { getEmailChannelDomain } from '@/settings/accounts/utils/getEmailChannelDomain';
 import { SettingsDnsRecordsTable } from '@/settings/components/SettingsDnsRecordsTable';
 
-import { SettingsEmailingDomainPostalAddressInput } from '@/settings/emailing-domains/components/SettingsEmailingDomainPostalAddressInput';
+import { SettingsEmailingDomainSenderFieldInput } from '@/settings/emailing-domains/components/SettingsEmailingDomainSenderFieldInput';
 import { SettingsEmailingDomainVerifyButton } from '@/settings/emailing-domains/components/SettingsEmailingDomainVerifyButton';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { SettingsSkeletonLoader } from '@/settings/components/SettingsSkeletonLoader';
@@ -243,9 +243,29 @@ export const SettingsWorkspaceCommunicationGroupChannelDetail = () => {
               title={t`Postal address`}
               description={t`Anti-spam law requires a physical postal address in every campaign. It is added to the footer of bulk emails sent from this domain.`}
             />
-            <SettingsEmailingDomainPostalAddressInput
+            <SettingsEmailingDomainSenderFieldInput
               emailingDomainId={emailingDomain.id}
-              senderPostalAddress={emailingDomain.senderPostalAddress}
+              field="senderPostalAddress"
+              value={emailingDomain.senderPostalAddress}
+              placeholder={t`123 Market Street, San Francisco, CA 94103, USA`}
+              successMessage={t`Postal address saved`}
+              minimumLength={10}
+            />
+          </Section>
+        )}
+        {isDefined(emailingDomain) && (
+          <Section>
+            <H2Title
+              title={t`Sender name`}
+              description={t`The name recipients see next to your address, instead of the address alone.`}
+            />
+            <SettingsEmailingDomainSenderFieldInput
+              emailingDomainId={emailingDomain.id}
+              field="senderDisplayName"
+              value={emailingDomain.senderDisplayName}
+              placeholder={t`Acme Team`}
+              successMessage={t`Sender name saved`}
+              minimumLength={1}
             />
           </Section>
         )}

@@ -15,8 +15,7 @@ export const SettingsEmailGroupPlanPill = () => {
 
   // Self-hosted instances unlock this behind an enterprise licence, while cloud
   // workspaces unlock it on their paid plan, so the pill names the actual plan.
-  const label =
-    !isBillingEnabled || isEnterprisePlan ? t`Enterprise` : t`Pro`;
+  const label = !isBillingEnabled || isEnterprisePlan ? t`Enterprise` : t`Pro`;
 
   return <Pill Icon={IconLock} label={label} />;
 };

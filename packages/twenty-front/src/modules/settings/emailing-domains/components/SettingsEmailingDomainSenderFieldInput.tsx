@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { SettingsTextInput } from '@/ui/input/components/SettingsTextInput';
-import { UpdateEmailingDomainSenderPostalAddressDocument } from '~/generated-metadata/graphql';
+import { UpdateEmailingDomainSenderIdentityDocument } from '~/generated-metadata/graphql';
 import { IconCheck } from 'twenty-ui/icon';
 import { Button } from 'twenty-ui/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
@@ -21,36 +21,44 @@ const StyledInputContainer = styled.div`
   margin-right: ${themeCssVariables.spacing[2]};
 `;
 
-const MINIMUM_POSTAL_ADDRESS_LENGTH = 10;
+type SenderField = 'senderPostalAddress' | 'senderDisplayName';
 
-type SettingsEmailingDomainPostalAddressInputProps = {
+type SettingsEmailingDomainSenderFieldInputProps = {
   emailingDomainId: string;
-  senderPostalAddress: string | null | undefined;
+  field: SenderField;
+  value: string | null | undefined;
+  placeholder: string;
+  successMessage: string;
+  minimumLength: number;
 };
 
-export const SettingsEmailingDomainPostalAddressInput = ({
+export const SettingsEmailingDomainSenderFieldInput = ({
   emailingDomainId,
-  senderPostalAddress,
-}: SettingsEmailingDomainPostalAddressInputProps) => {
+  field,
+  value,
+  placeholder,
+  successMessage,
+  minimumLength,
+}: SettingsEmailingDomainSenderFieldInputProps) => {
   const { t } = useLingui();
   const { enqueueSuccessSnackBar, enqueueErrorSnackBar } = useSnackBar();
-  const [value, setValue] = useState(senderPostalAddress ?? '');
-  const [updateSenderPostalAddress, { loading }] = useMutation(
-    UpdateEmailingDomainSenderPostalAddressDocument,
+  const [draftValue, setDraftValue] = useState(value ?? '');
+  const [updateSenderIdentity, { loading }] = useMutation(
+    UpdateEmailingDomainSenderIdentityDocument,
   );
 
   const isSavable =
-    value.trim().length >= MINIMUM_POSTAL_ADDRESS_LENGTH &&
-    value.trim() !== (senderPostalAddress ?? '');
+    draftValue.trim().length >= minimumLength &&
+    draftValue.trim() !== (value ?? '');
 
   const handleSave = async () => {
     try {
-      await updateSenderPostalAddress({
+      await updateSenderIdentity({
         variables: {
-          input: { emailingDomainId, senderPostalAddress: value.trim() },
+          input: { emailingDomainId, [field]: draftValue.trim() },
         },
       });
-      enqueueSuccessSnackBar({ message: t`Postal address saved` });
+      enqueueSuccessSnackBar({ message: successMessage });
     } catch (error) {
       enqueueErrorSnackBar({
         ...(CombinedGraphQLErrors.is(error) ? { apolloError: error } : {}),
@@ -62,10 +70,10 @@ export const SettingsEmailingDomainPostalAddressInput = ({
     <StyledRow>
       <StyledInputContainer>
         <SettingsTextInput
-          instanceId="emailing-domain-postal-address"
-          value={value}
-          onChange={setValue}
-          placeholder={t`123 Market Street, San Francisco, CA 94103, USA`}
+          instanceId={`emailing-domain-${field}`}
+          value={draftValue}
+          onChange={setDraftValue}
+          placeholder={placeholder}
           fullWidth
         />
       </StyledInputContainer>

@@ -9,7 +9,7 @@ import { CreateEmailingDomainInput } from 'src/engine/core-modules/emailing-doma
 import { EmailingDomainDTO } from 'src/engine/core-modules/emailing-domain/dtos/emailing-domain.dto';
 import { VerificationRecordDTO } from 'src/engine/core-modules/emailing-domain/dtos/verification-record.dto';
 import { buildEmailAuthenticationRecords } from 'src/engine/core-modules/emailing-domain/utils/build-email-authentication-records.util';
-import { UpdateEmailingDomainSenderPostalAddressInput } from 'src/engine/core-modules/emailing-domain/dtos/update-emailing-domain-sender-postal-address.input';
+import { UpdateEmailingDomainSenderIdentityInput } from 'src/engine/core-modules/emailing-domain/dtos/update-emailing-domain-sender-identity.input';
 import { EmailGroupAccessGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/email-group-access-graphql-api-exception.filter';
 import { EmailingDomainGraphqlApiExceptionFilter } from 'src/engine/core-modules/emailing-domain/filters/emailing-domain-graphql-api-exception.filter';
 import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
@@ -60,17 +60,18 @@ export class EmailingDomainResolver {
 
   @Mutation(() => EmailingDomainDTO)
   @RequireFeatureFlag(FeatureFlagKey.IS_EMAIL_GROUP_ENABLED)
-  async updateEmailingDomainSenderPostalAddress(
-    @Args('input') input: UpdateEmailingDomainSenderPostalAddressInput,
+  async updateEmailingDomainSenderIdentity(
+    @Args('input') input: UpdateEmailingDomainSenderIdentityInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
   ): Promise<EmailingDomainDTO> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
 
-    return this.emailingDomainService.updateSenderPostalAddress(
-      currentWorkspace.id,
-      input.emailingDomainId,
-      input.senderPostalAddress,
-    );
+    return this.emailingDomainService.updateSenderIdentity({
+      workspaceId: currentWorkspace.id,
+      emailingDomainId: input.emailingDomainId,
+      senderPostalAddress: input.senderPostalAddress,
+      senderDisplayName: input.senderDisplayName,
+    });
   }
 
   @Mutation(() => Boolean)

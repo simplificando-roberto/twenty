@@ -8,6 +8,7 @@ export const VERIFY_EMAILING_DOMAIN = gql`
       status
       verifiedAt
       senderPostalAddress
+      senderDisplayName
       verificationRecords {
         type
         key
