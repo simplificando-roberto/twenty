@@ -117,6 +117,7 @@ import { BackfillCreatedWorkspaceActivationStatusSlowInstanceCommand } from './2
 import { AddAutoUpgradeToApplicationFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784297307235-add-auto-upgrade-to-application';
 import { AddEmailingDomainSenderIdentityFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784286709000-add-emailing-domain-sender-identity';
 import { AddMessageCampaignWidgetTypeFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784286710000-add-message-campaign-widget-type';
+import { AddWorkspaceMessageCampaignDailySendLimitFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784286711000-add-workspace-message-campaign-daily-send-limit';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -236,4 +237,5 @@ export const INSTANCE_COMMANDS = [
   AddAutoUpgradeToApplicationFastInstanceCommand,
   AddEmailingDomainSenderIdentityFastInstanceCommand,
   AddMessageCampaignWidgetTypeFastInstanceCommand,
+  AddWorkspaceMessageCampaignDailySendLimitFastInstanceCommand,
 ];

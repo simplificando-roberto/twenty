@@ -10,6 +10,7 @@ import {
 
 export const EmailGroupAccessExceptionCode = appendCommonExceptionCode({
   EMAIL_GROUP_ENTERPRISE_PLAN_REQUIRED: 'EMAIL_GROUP_ENTERPRISE_PLAN_REQUIRED',
+  CAMPAIGN_SEND_QUOTA_EXCEEDED: 'CAMPAIGN_SEND_QUOTA_EXCEEDED',
   CAMPAIGN_TEST_SEND_NOT_POSSIBLE: 'CAMPAIGN_TEST_SEND_NOT_POSSIBLE',
   MESSAGE_CAMPAIGN_NOT_EDITABLE: 'MESSAGE_CAMPAIGN_NOT_EDITABLE',
 } as const);
@@ -19,6 +20,7 @@ const emailGroupAccessExceptionUserFriendlyMessages: Record<
   MessageDescriptor
 > = {
   EMAIL_GROUP_ENTERPRISE_PLAN_REQUIRED: msg`Email group requires an Enterprise plan.`,
+  CAMPAIGN_SEND_QUOTA_EXCEEDED: msg`This campaign is over your daily sending limit. Contact support to raise it.`,
   CAMPAIGN_TEST_SEND_NOT_POSSIBLE: msg`Select a verified sending address before you send a test.`,
   MESSAGE_CAMPAIGN_NOT_EDITABLE: msg`This campaign has already been sent and can no longer be edited.`,
   INTERNAL_SERVER_ERROR: msg`An unexpected error occurred.`,

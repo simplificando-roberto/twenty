@@ -31,6 +31,7 @@ export const USER_LOOKUP_ADMIN_PANEL = gql`
           key
           value
         }
+        messageCampaignDailySendLimit
       }
     }
   }
