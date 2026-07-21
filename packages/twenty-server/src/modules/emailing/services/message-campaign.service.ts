@@ -89,7 +89,7 @@ type SaveCampaignDraftArgs = {
 
 type SendTestEmailArgs = {
   workspaceId: string;
-  toAddress: string;
+  toAddresses: string[];
   fromAddress: string;
   subject: string;
   html: string;
@@ -1008,7 +1008,7 @@ export class MessageCampaignService {
 
   async sendTestEmail({
     workspaceId,
-    toAddress,
+    toAddresses,
     fromAddress,
     subject,
     html,
@@ -1036,7 +1036,7 @@ export class MessageCampaignService {
       emailingDomain.id,
       {
         from: fromAddress,
-        to: [toAddress],
+        to: toAddresses,
         subject: `[Test] ${renderCampaignTemplate(subject, variables, {
           escapeValues: false,
         })}`,

@@ -1,12 +1,24 @@
 import { Field, InputType } from '@nestjs/graphql';
 
-import { IsEmail, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
+  IsEmail,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 @InputType()
 export class SendTestMessageCampaignInput {
   @Field(() => String)
   @IsEmail()
   fromAddress: string;
+
+  @Field(() => [String])
+  @ArrayNotEmpty()
+  @ArrayMaxSize(10)
+  @IsEmail({}, { each: true })
+  toAddresses: string[];
 
   @Field(() => String)
   @IsString()

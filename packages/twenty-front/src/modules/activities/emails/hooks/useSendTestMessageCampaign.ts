@@ -11,6 +11,7 @@ import {
 
 type SendTestMessageCampaignArgs = {
   fromAddress: string;
+  toAddresses: string[];
   subject: string;
   body: string;
 };
@@ -28,7 +29,7 @@ export const useSendTestMessageCampaign = () => {
   ) => {
     try {
       await sendTestMessageCampaignMutation({ variables: { input } });
-      enqueueSuccessSnackBar({ message: t`Test email sent to you` });
+      enqueueSuccessSnackBar({ message: t`Test email sent` });
     } catch (error) {
       enqueueErrorSnackBar({
         ...(CombinedGraphQLErrors.is(error) ? { apolloError: error } : {}),

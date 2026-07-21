@@ -5231,6 +5231,7 @@ export type SendTestMessageCampaignInput = {
   body: Scalars['String']['input'];
   fromAddress: Scalars['String']['input'];
   subject: Scalars['String']['input'];
+  toAddresses: Array<Scalars['String']['input']>;
 };
 
 export type Sentry = {

@@ -1,22 +1,26 @@
 import { styled } from '@linaria/react';
 import { t } from '@lingui/core/macro';
+import { useNavigate } from 'react-router-dom';
 
 import { CampaignComposerFields } from '@/activities/emails/components/CampaignComposerFields';
+import { MessageCampaignStats } from '@/activities/emails/components/MessageCampaignStats';
+import {
+  SEND_TEST_CAMPAIGN_MODAL_ID,
+  SendTestCampaignModal,
+} from '@/activities/emails/components/SendTestCampaignModal';
 import { useCampaignAudiencePreview } from '@/activities/emails/hooks/useCampaignAudiencePreview';
 import { useCampaignComposerState } from '@/activities/emails/hooks/useCampaignComposerState';
+import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useMyMessageChannels } from '@/settings/accounts/hooks/useMyMessageChannels';
 import { useTargetRecord } from '@/ui/layout/contexts/useTargetRecord';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
 import { useModal } from '@/ui/layout/modal/hooks/useModal';
-import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
-import { useSendTestMessageCampaign } from '@/activities/emails/hooks/useSendTestMessageCampaign';
 import { MessageChannelType, SettingsPath } from 'twenty-shared/types';
 import { getSettingsPath, isDefined } from 'twenty-shared/utils';
 import { Callout } from 'twenty-ui/feedback';
 import { IconMailCog, IconSend, IconTestPipe } from 'twenty-ui/icon';
 import { Button } from 'twenty-ui/input';
 import { themeCssVariables } from 'twenty-ui/theme-constants';
-import { useNavigate } from 'react-router-dom';
 
 const SEND_CAMPAIGN_MODAL_ID = 'send-campaign-confirmation-modal';
 
@@ -43,12 +47,17 @@ export const MessageCampaignComposerPage = () => {
   const { openModal } = useModal();
   const { channels } = useMyMessageChannels();
 
-  const { record: campaign, loading: campaignLoading } = useFindOneRecord({
+  const {
+    record: campaign,
+    loading: campaignLoading,
+    refetch: refetchCampaign,
+  } = useFindOneRecord({
     objectNameSingular: 'messageCampaign',
     objectRecordId: targetRecord.id,
   });
 
   const campaignState = useCampaignComposerState({
+    onSent: refetchCampaign,
     initialValues: {
       campaignId: targetRecord.id,
       listId: campaign?.listId ?? null,
@@ -64,17 +73,13 @@ export const MessageCampaignComposerPage = () => {
     unsubscribeTopicId: campaignState.unsubscribeTopicId,
   });
 
-  const { sendTestMessageCampaign, loading: sendingTest } =
-    useSendTestMessageCampaign();
-
   const hasMailbox = channels.some(
     (channel) => channel.type === MessageChannelType.EMAIL_GROUP,
   );
 
   const canSendTest =
     campaignState.fromAddress.trim().length > 0 &&
-    campaignState.subject.trim().length > 0 &&
-    !sendingTest;
+    campaignState.subject.trim().length > 0;
 
   const openSendConfirmation = () => {
     if (campaignState.canSend) {
@@ -82,15 +87,26 @@ export const MessageCampaignComposerPage = () => {
     }
   };
 
-  const handleSendTest = () =>
-    sendTestMessageCampaign({
-      fromAddress: campaignState.fromAddress.trim(),
-      subject: campaignState.subject,
-      body: campaignState.body,
-    });
-
   if (campaignLoading) {
     return null;
+  }
+
+  // A campaign that has left DRAFT is already with the provider, so the page
+  // reports on it instead of offering an editor that could not be applied.
+  if (isDefined(campaign) && campaign.status !== 'DRAFT') {
+    return (
+      <StyledContainer>
+        <MessageCampaignStats
+          status={campaign.status}
+          subject={campaign.subject ?? null}
+          sentAt={campaign.sentAt ?? null}
+          sentCount={campaign.sentCount ?? 0}
+          failedCount={campaign.failedCount ?? 0}
+          bouncedCount={campaign.bouncedCount ?? 0}
+          complainedCount={campaign.complainedCount ?? 0}
+        />
+      </StyledContainer>
+    );
   }
 
   return (
@@ -111,11 +127,10 @@ export const MessageCampaignComposerPage = () => {
       <CampaignComposerFields campaignState={campaignState} />
       <StyledActions>
         <Button
-          title={t`Send test to myself`}
+          title={t`Send test`}
           Icon={IconTestPipe}
           variant="secondary"
-          onClick={handleSendTest}
-          isLoading={sendingTest}
+          onClick={() => openModal(SEND_TEST_CAMPAIGN_MODAL_ID)}
           disabled={!canSendTest}
         />
         <Button
@@ -127,6 +142,11 @@ export const MessageCampaignComposerPage = () => {
           disabled={!campaignState.canSend}
         />
       </StyledActions>
+      <SendTestCampaignModal
+        fromAddress={campaignState.fromAddress.trim()}
+        subject={campaignState.subject}
+        body={campaignState.body}
+      />
       <ConfirmationModal
         modalInstanceId={SEND_CAMPAIGN_MODAL_ID}
         title={t`Send this campaign?`}

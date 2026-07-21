@@ -18,9 +18,7 @@ import { SendTestMessageCampaignInput } from 'src/engine/core-modules/emailing-d
 import { SendMessageCampaignOutputDTO } from 'src/engine/core-modules/emailing-domain/dtos/send-message-campaign-output.dto';
 import { EmailGroupAccessService } from 'src/engine/core-modules/emailing-domain/services/email-group-access.service';
 import { ResolverValidationPipe } from 'src/engine/core-modules/graphql/pipes/resolver-validation.pipe';
-import { UserEntity } from 'src/engine/core-modules/user/user.entity';
 import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
-import { AuthUser } from 'src/engine/decorators/auth/auth-user.decorator';
 import { AuthUserWorkspaceId } from 'src/engine/decorators/auth/auth-user-workspace-id.decorator';
 import { AuthWorkspace } from 'src/engine/decorators/auth/auth-workspace.decorator';
 import {
@@ -127,7 +125,6 @@ export class EmailingSendResolver {
   async sendTestMessageCampaign(
     @Args('input') input: SendTestMessageCampaignInput,
     @AuthWorkspace() currentWorkspace: WorkspaceEntity,
-    @AuthUser() currentUser: UserEntity,
   ): Promise<boolean> {
     this.emailGroupAccessService.validateEmailGroupAccessOrThrow();
     await this.emailBillingService.validateEmailCreditsOrThrow(
@@ -136,7 +133,7 @@ export class EmailingSendResolver {
 
     await this.messageCampaignService.sendTestEmail({
       workspaceId: currentWorkspace.id,
-      toAddress: currentUser.email,
+      toAddresses: input.toAddresses,
       fromAddress: input.fromAddress,
       subject: input.subject,
       html: input.body,
@@ -144,7 +141,7 @@ export class EmailingSendResolver {
 
     await this.emailBillingService.billSentEmails({
       workspaceId: currentWorkspace.id,
-      sentEmailCount: 1,
+      sentEmailCount: input.toAddresses.length,
     });
 
     return true;

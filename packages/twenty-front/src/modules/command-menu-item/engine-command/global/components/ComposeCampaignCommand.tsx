@@ -5,9 +5,6 @@ export const ComposeCampaignCommand = () => {
   const { createAndOpenCampaign } = useCreateAndOpenCampaign();
 
   return (
-    <HeadlessEngineCommandWrapperEffect
-      execute={createAndOpenCampaign}
-      ready
-    />
+    <HeadlessEngineCommandWrapperEffect execute={createAndOpenCampaign} ready />
   );
 };
