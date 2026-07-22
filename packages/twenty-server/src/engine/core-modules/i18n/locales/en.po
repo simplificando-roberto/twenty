@@ -5911,6 +5911,12 @@ msgstr "Parent view filter group not found"
 msgid "Password is too weak."
 msgstr "Password is too weak."
 
+#. js-lingui-id: wcInzz
+#: src/engine/core-modules/auth/services/auth.service.ts
+#: src/engine/core-modules/auth/services/auth.service.ts
+msgid "Password reset required."
+msgstr "Password reset required."
+
 #. js-lingui-id: cd6AP5
 #: src/engine/core-modules/auth/services/reset-password.service.ts
 msgid "Password reset token has already been generated. Please wait for {timeToWait} to generate again."
@@ -7951,6 +7957,11 @@ msgstr "This domain is already registered."
 #: src/engine/core-modules/workspace/workspace.exception.ts
 msgid "This domain is already taken."
 msgstr "This domain is already taken."
+
+#. js-lingui-id: oKSEMp
+#: src/engine/core-modules/auth/services/auth.service.ts
+msgid "This email already belongs to an existing user. Use the existing-member temporary access action after securely linking the account."
+msgstr "This email already belongs to an existing user. Use the existing-member temporary access action after securely linking the account."
 
 #. js-lingui-id: NcQ6eO
 #: src/engine/core-modules/user/user.exception.ts

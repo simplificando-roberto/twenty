@@ -5918,6 +5918,12 @@ msgstr "Överordnad visningsfiltergrupp hittades inte"
 msgid "Password is too weak."
 msgstr "För svagt lösenord."
 
+#. js-lingui-id: wcInzz
+#: src/engine/core-modules/auth/services/auth.service.ts
+#: src/engine/core-modules/auth/services/auth.service.ts
+msgid "Password reset required."
+msgstr ""
+
 #. js-lingui-id: cd6AP5
 #: src/engine/core-modules/auth/services/reset-password.service.ts
 msgid "Password reset token has already been generated. Please wait for {timeToWait} to generate again."
@@ -7962,6 +7968,11 @@ msgstr "Denna domän är redan registrerad."
 #: src/engine/core-modules/workspace/workspace.exception.ts
 msgid "This domain is already taken."
 msgstr "Denna domän är redan upptagen."
+
+#. js-lingui-id: oKSEMp
+#: src/engine/core-modules/auth/services/auth.service.ts
+msgid "This email already belongs to an existing user. Use the existing-member temporary access action after securely linking the account."
+msgstr ""
 
 #. js-lingui-id: NcQ6eO
 #: src/engine/core-modules/user/user.exception.ts

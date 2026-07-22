@@ -5916,6 +5916,12 @@ msgstr "لم يتم العثور على مجموعة فلتر العرض الأ�
 msgid "Password is too weak."
 msgstr "كلمة المرور ضعيفة جدًا."
 
+#. js-lingui-id: wcInzz
+#: src/engine/core-modules/auth/services/auth.service.ts
+#: src/engine/core-modules/auth/services/auth.service.ts
+msgid "Password reset required."
+msgstr ""
+
 #. js-lingui-id: cd6AP5
 #: src/engine/core-modules/auth/services/reset-password.service.ts
 msgid "Password reset token has already been generated. Please wait for {timeToWait} to generate again."
@@ -7956,6 +7962,11 @@ msgstr "هذا النطاق مُسجَّل بالفعل."
 #: src/engine/core-modules/workspace/workspace.exception.ts
 msgid "This domain is already taken."
 msgstr "هذا النطاق مستخدم بالفعل."
+
+#. js-lingui-id: oKSEMp
+#: src/engine/core-modules/auth/services/auth.service.ts
+msgid "This email already belongs to an existing user. Use the existing-member temporary access action after securely linking the account."
+msgstr ""
 
 #. js-lingui-id: NcQ6eO
 #: src/engine/core-modules/user/user.exception.ts
