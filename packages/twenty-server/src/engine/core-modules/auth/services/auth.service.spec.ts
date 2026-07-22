@@ -1,10 +1,15 @@
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
-import bcrypt from 'bcrypt';
-import { type Repository } from 'typeorm';
+import crypto from 'crypto';
 
-import { AppTokenEntity } from 'src/engine/core-modules/app-token/app-token.entity';
+import bcrypt from 'bcrypt';
+import { type EntityManager, type Repository } from 'typeorm';
+
+import {
+  AppTokenEntity,
+  AppTokenType,
+} from 'src/engine/core-modules/app-token/app-token.entity';
 import { EventLogEmitterService } from 'src/engine/core-modules/event-logs/emit/event-log-emitter.service';
 import {
   AuthException,
@@ -52,6 +57,9 @@ describe('AuthService', () => {
   let signInUpServiceMock: jest.Mocked<
     Pick<SignInUpService, 'validatePassword'>
   >;
+  let eventLogEmitterService: EventLogEmitterService;
+  let transactionManager: jest.Mocked<Pick<EntityManager, 'save' | 'update'>>;
+  let transactionMock: jest.Mock;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -66,7 +74,13 @@ describe('AuthService', () => {
         {
           provide: getRepositoryToken(UserEntity),
           useValue: {
+            create: jest.fn((input) => input),
             findOne: jest.fn(),
+            save: jest.fn(),
+            update: jest.fn(),
+            manager: {
+              transaction: jest.fn(),
+            },
           },
         },
         {
@@ -78,6 +92,7 @@ describe('AuthService', () => {
               where: jest.fn().mockReturnThis(),
               getOne: jest.fn().mockImplementation(() => null),
             }),
+            update: jest.fn(),
           },
         },
         {
@@ -90,7 +105,9 @@ describe('AuthService', () => {
         },
         {
           provide: DomainServerConfigService,
-          useValue: {},
+          useValue: {
+            getBaseUrl: jest.fn().mockReturnValue(new URL('https://crm.test')),
+          },
         },
         {
           provide: WorkspaceAgnosticTokenService,
@@ -115,7 +132,7 @@ describe('AuthService', () => {
         },
         {
           provide: EmailService,
-          useValue: {},
+          useValue: { send: jest.fn() },
         },
         {
           provide: AccessTokenService,
@@ -130,6 +147,7 @@ describe('AuthService', () => {
           useValue: {
             checkUserWorkspaceExists: jest.fn(),
             addUserToWorkspaceIfUserNotInWorkspace: jest.fn(),
+            validateRoleForNewMember: jest.fn(),
             findAvailableWorkspacesByEmail: jest.fn(),
           },
         },
@@ -137,12 +155,16 @@ describe('AuthService', () => {
           provide: UserService,
           useValue: {
             hasUserAccessToWorkspaceOrThrow: jest.fn(),
+            deleteUser: jest.fn(),
+            findUserByIdOrThrow: jest.fn(),
+            findUserByEmail: jest.fn(),
           },
         },
         {
           provide: WorkspaceInvitationService,
           useValue: {
             getOneWorkspaceInvitation: jest.fn(),
+            invalidateWorkspaceInvitation: jest.fn(),
             validatePersonalInvitation: jest.fn(),
           },
         },
@@ -162,7 +184,11 @@ describe('AuthService', () => {
         },
         {
           provide: EventLogEmitterService,
-          useValue: {},
+          useValue: {
+            createContext: jest.fn().mockReturnValue({
+              insertWorkspaceEvent: jest.fn(),
+            }),
+          },
         },
         {
           provide: PermissionsService,
@@ -208,9 +234,23 @@ describe('AuthService', () => {
       getRepositoryToken(UserEntity),
     );
     permissionsService = module.get<PermissionsService>(PermissionsService);
+    eventLogEmitterService = module.get<EventLogEmitterService>(
+      EventLogEmitterService,
+    );
     signInUpServiceMock = module.get(SignInUpService) as jest.Mocked<
       Pick<SignInUpService, 'validatePassword'>
     >;
+
+    transactionManager = {
+      save: jest.fn(),
+      update: jest.fn(),
+    };
+    transactionMock = jest.fn(
+      async <T>(callback: (entityManager: EntityManager) => Promise<T>) =>
+        callback(transactionManager as unknown as EntityManager),
+    );
+    userRepository.manager.transaction =
+      transactionMock as unknown as EntityManager['transaction'];
   });
 
   beforeEach(() => {
@@ -220,6 +260,172 @@ describe('AuthService', () => {
 
   it('should be defined', async () => {
     expect(service).toBeDefined();
+  });
+
+  describe('issueAdminTemporaryAccess', () => {
+    it('rotates credentials, revokes sessions and only persists the reset token hash', async () => {
+      twentyConfigServiceGetMock.mockImplementation((key) =>
+        key === 'PASSWORD_RESET_TOKEN_EXPIRES_IN' ? '1h' : false,
+      );
+      jest
+        .spyOn(userService, 'findUserByIdOrThrow')
+        .mockResolvedValue({ id: 'target-user-id' } as UserEntity);
+
+      const result = await service.issueAdminTemporaryAccess({
+        actorUserId: 'actor-user-id',
+        targetUserId: 'target-user-id',
+        workspaceId: 'workspace-id',
+      });
+
+      expect(userService.hasUserAccessToWorkspaceOrThrow).toHaveBeenCalledWith(
+        'target-user-id',
+        'workspace-id',
+      );
+      expect(transactionManager.update).toHaveBeenCalledWith(
+        UserEntity,
+        'target-user-id',
+        expect.objectContaining({ mustChangePassword: true }),
+      );
+      expect(transactionManager.save).toHaveBeenCalledWith(
+        AppTokenEntity,
+        expect.objectContaining({
+          userId: 'target-user-id',
+          workspaceId: 'workspace-id',
+          type: AppTokenType.PasswordResetToken,
+          value: crypto
+            .createHash('sha256')
+            .update(result.passwordResetToken)
+            .digest('hex'),
+        }),
+      );
+      expect(transactionManager.update).toHaveBeenCalledTimes(3);
+      expect(result.passwordResetToken).toHaveLength(64);
+      expect(eventLogEmitterService.createContext).toHaveBeenCalledWith({
+        workspaceId: 'workspace-id',
+        userId: 'actor-user-id',
+      });
+    });
+
+    it('rejects a target outside the authenticated workspace', async () => {
+      jest
+        .spyOn(userService, 'hasUserAccessToWorkspaceOrThrow')
+        .mockRejectedValue(new Error('Access denied'));
+
+      await expect(
+        service.issueAdminTemporaryAccess({
+          actorUserId: 'actor-user-id',
+          targetUserId: 'target-user-id',
+          workspaceId: 'workspace-id',
+        }),
+      ).rejects.toThrow('Access denied');
+
+      expect(transactionMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('provisionTemporaryWorkspaceMember', () => {
+    it('refuses to overwrite a global user resolved only by email', async () => {
+      jest.spyOn(userService, 'findUserByEmail').mockResolvedValue({
+        id: 'existing-user-id',
+        email: 'member@example.com',
+      } as UserEntity);
+
+      await expect(
+        service.provisionTemporaryWorkspaceMember({
+          actorUserId: 'actor-user-id',
+          email: 'member@example.com',
+          roleId: 'role-id',
+          workspace: { id: 'workspace-id' } as WorkspaceEntity,
+        }),
+      ).rejects.toMatchObject({ code: AuthExceptionCode.USER_ALREADY_EXISTS });
+
+      expect(userRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('creates a new member with the requested role before issuing access', async () => {
+      twentyConfigServiceGetMock.mockImplementation((key) =>
+        key === 'PASSWORD_RESET_TOKEN_EXPIRES_IN' ? '1h' : false,
+      );
+      jest.spyOn(userService, 'findUserByEmail').mockResolvedValue(null);
+      jest.spyOn(userRepository, 'save').mockResolvedValue({
+        id: 'new-user-id',
+        email: 'member@example.com',
+      } as UserEntity);
+      jest
+        .spyOn(userService, 'findUserByIdOrThrow')
+        .mockResolvedValue({ id: 'new-user-id' } as UserEntity);
+
+      const result = await service.provisionTemporaryWorkspaceMember({
+        actorUserId: 'actor-user-id',
+        email: 'Member@Example.com',
+        roleId: 'role-id',
+        workspace: { id: 'workspace-id' } as WorkspaceEntity,
+      });
+
+      expect(userRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'member@example.com',
+          mustChangePassword: true,
+          canImpersonate: false,
+          canAccessFullAdminPanel: false,
+        }),
+      );
+      expect(
+        userWorkspaceService.validateRoleForNewMember,
+      ).toHaveBeenCalledWith(
+        'role-id',
+        expect.objectContaining({ id: 'workspace-id' }),
+      );
+      expect(
+        userWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'new-user-id' }),
+        expect.objectContaining({ id: 'workspace-id' }),
+        'role-id',
+      );
+      expect(result.targetUserId).toBe('new-user-id');
+      expect(
+        workspaceInvitationService.invalidateWorkspaceInvitation,
+      ).toHaveBeenCalledWith('workspace-id', 'member@example.com');
+    });
+
+    it('removes the newly created global user if membership creation fails', async () => {
+      jest.spyOn(userService, 'findUserByEmail').mockResolvedValue(null);
+      jest.spyOn(userRepository, 'save').mockResolvedValue({
+        id: 'new-user-id',
+        email: 'member@example.com',
+      } as UserEntity);
+      jest
+        .spyOn(userWorkspaceService, 'addUserToWorkspaceIfUserNotInWorkspace')
+        .mockRejectedValue(new Error('Membership failed'));
+
+      await expect(
+        service.provisionTemporaryWorkspaceMember({
+          actorUserId: 'actor-user-id',
+          email: 'member@example.com',
+          roleId: 'role-id',
+          workspace: { id: 'workspace-id' } as WorkspaceEntity,
+        }),
+      ).rejects.toThrow('Membership failed');
+
+      expect(userService.deleteUser).toHaveBeenCalledWith('new-user-id');
+    });
+  });
+
+  it('blocks token issuance while a password change is required', async () => {
+    jest.spyOn(userService, 'findUserByEmail').mockResolvedValue({
+      id: 'target-user-id',
+      email: 'member@example.com',
+      mustChangePassword: true,
+    } as UserEntity);
+
+    await expect(
+      service.verify(
+        'member@example.com',
+        'workspace-id',
+        AuthProviderEnum.Password,
+      ),
+    ).rejects.toMatchObject({ code: AuthExceptionCode.FORBIDDEN_EXCEPTION });
   });
 
   it('challenge - user already member of workspace', async () => {

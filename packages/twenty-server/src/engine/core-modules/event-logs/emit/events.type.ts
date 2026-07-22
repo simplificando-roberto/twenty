@@ -39,6 +39,10 @@ import {
   type UserSignupTrackEvent,
 } from 'src/engine/core-modules/event-logs/emit/events/workspace-event/user/user-signup';
 import {
+  type ADMIN_TEMPORARY_ACCESS_ISSUED_EVENT,
+  type AdminTemporaryAccessIssuedTrackEvent,
+} from 'src/engine/core-modules/event-logs/emit/events/workspace-event/user/admin-temporary-access-issued';
+import {
   type WEBHOOK_RESPONSE_EVENT,
   type WebhookResponseTrackEvent,
 } from 'src/engine/core-modules/event-logs/emit/events/workspace-event/webhook/webhook-response';
@@ -64,7 +68,8 @@ export type TrackEventName =
   | typeof USER_SIGNUP_EVENT
   | typeof WORKSPACE_CREATED_EVENT
   | typeof PAYMENT_RECEIVED_EVENT
-  | typeof SERVER_ADMIN_ACCESS_CHANGED_EVENT;
+  | typeof SERVER_ADMIN_ACCESS_CHANGED_EVENT
+  | typeof ADMIN_TEMPORARY_ACCESS_ISSUED_EVENT;
 
 export interface TrackEvents {
   [CUSTOM_DOMAIN_ACTIVATED_EVENT]: CustomDomainActivatedTrackEvent;
@@ -80,6 +85,7 @@ export interface TrackEvents {
   [WORKSPACE_CREATED_EVENT]: WorkspaceCreatedTrackEvent;
   [PAYMENT_RECEIVED_EVENT]: PaymentReceivedTrackEvent;
   [SERVER_ADMIN_ACCESS_CHANGED_EVENT]: ServerAdminAccessChangedTrackEvent;
+  [ADMIN_TEMPORARY_ACCESS_ISSUED_EVENT]: AdminTemporaryAccessIssuedTrackEvent;
 }
 
 export type TrackEventProperties<T extends TrackEventName> =

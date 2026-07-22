@@ -32,6 +32,14 @@ export type AddQuerySubscriptionInput = {
   queryId: Scalars['String']['input'];
 };
 
+export type AdminTemporaryAccess = {
+  __typename?: 'AdminTemporaryAccess';
+  passwordResetToken: Scalars['String']['output'];
+  passwordResetTokenExpiresAt: Scalars['DateTime']['output'];
+  targetUserId: Scalars['UUID']['output'];
+  workspaceId: Scalars['UUID']['output'];
+};
+
 export type Agent = {
   __typename?: 'Agent';
   applicationId?: Maybe<Scalars['UUID']['output']>;
@@ -2621,6 +2629,8 @@ export type Mutation = {
   installApplication: Application;
   /** @deprecated Use installApplication instead */
   installMarketplaceApp: Scalars['Boolean']['output'];
+  issueAdminTemporaryAccess: AdminTemporaryAccess;
+  provisionTemporaryWorkspaceMember: AdminTemporaryAccess;
   refreshEnterpriseValidityToken: Scalars['Boolean']['output'];
   releaseEnterpriseServerBinding: EnterpriseLicenseInfoDto;
   removeQueryFromEventStream: Scalars['Boolean']['output'];
@@ -3319,6 +3329,17 @@ export type MutationInstallApplicationArgs = {
 export type MutationInstallMarketplaceAppArgs = {
   universalIdentifier: Scalars['String']['input'];
   version?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationIssueAdminTemporaryAccessArgs = {
+  targetUserId: Scalars['UUID']['input'];
+};
+
+
+export type MutationProvisionTemporaryWorkspaceMemberArgs = {
+  email: Scalars['String']['input'];
+  roleId: Scalars['UUID']['input'];
 };
 
 
