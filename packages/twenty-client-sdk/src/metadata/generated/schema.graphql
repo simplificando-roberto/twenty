@@ -2330,6 +2330,13 @@ type VerifyTwoFactorAuthenticationMethod {
   success: Boolean!
 }
 
+type AdminTemporaryAccess {
+  targetUserId: UUID!
+  passwordResetToken: String!
+  passwordResetTokenExpiresAt: DateTime!
+  workspaceId: UUID!
+}
+
 type AuthorizeApp {
   redirectUrl: String!
 }
@@ -3477,6 +3484,8 @@ type Mutation {
   generateApiKeyToken(apiKeyId: UUID!, expiresAt: String!): ApiKeyToken!
   generatePlaygroundToken: AuthToken!
   emailPasswordResetLink(email: String!, workspaceId: UUID): EmailPasswordResetLink!
+  issueAdminTemporaryAccess(targetUserId: UUID!): AdminTemporaryAccess!
+  provisionTemporaryWorkspaceMember(email: String!, roleId: UUID!): AdminTemporaryAccess!
   updatePasswordViaResetToken(passwordResetToken: String!, newPassword: String!): InvalidatePassword!
   initiateOTPProvisioning(loginToken: String!, origin: String!): InitiateTwoFactorAuthenticationProvisioning!
   initiateOTPProvisioningForAuthenticatedUser: InitiateTwoFactorAuthenticationProvisioning!

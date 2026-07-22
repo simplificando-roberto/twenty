@@ -2009,6 +2009,14 @@ export interface VerifyTwoFactorAuthenticationMethod {
     __typename: 'VerifyTwoFactorAuthenticationMethod'
 }
 
+export interface AdminTemporaryAccess {
+    targetUserId: Scalars['UUID']
+    passwordResetToken: Scalars['String']
+    passwordResetTokenExpiresAt: Scalars['DateTime']
+    workspaceId: Scalars['UUID']
+    __typename: 'AdminTemporaryAccess'
+}
+
 export interface AuthorizeApp {
     redirectUrl: Scalars['String']
     __typename: 'AuthorizeApp'
@@ -3024,6 +3032,8 @@ export interface Mutation {
     generateApiKeyToken: ApiKeyToken
     generatePlaygroundToken: AuthToken
     emailPasswordResetLink: EmailPasswordResetLink
+    issueAdminTemporaryAccess: AdminTemporaryAccess
+    provisionTemporaryWorkspaceMember: AdminTemporaryAccess
     updatePasswordViaResetToken: InvalidatePassword
     initiateOTPProvisioning: InitiateTwoFactorAuthenticationProvisioning
     initiateOTPProvisioningForAuthenticatedUser: InitiateTwoFactorAuthenticationProvisioning
@@ -5162,6 +5172,15 @@ export interface VerifyTwoFactorAuthenticationMethodGenqlSelection{
     __scalar?: boolean | number
 }
 
+export interface AdminTemporaryAccessGenqlSelection{
+    targetUserId?: boolean | number
+    passwordResetToken?: boolean | number
+    passwordResetTokenExpiresAt?: boolean | number
+    workspaceId?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface AuthorizeAppGenqlSelection{
     redirectUrl?: boolean | number
     __typename?: boolean | number
@@ -6265,6 +6284,8 @@ export interface MutationGenqlSelection{
     generateApiKeyToken?: (ApiKeyTokenGenqlSelection & { __args: {apiKeyId: Scalars['UUID'], expiresAt: Scalars['String']} })
     generatePlaygroundToken?: AuthTokenGenqlSelection
     emailPasswordResetLink?: (EmailPasswordResetLinkGenqlSelection & { __args: {email: Scalars['String'], workspaceId?: (Scalars['UUID'] | null)} })
+    issueAdminTemporaryAccess?: (AdminTemporaryAccessGenqlSelection & { __args: {targetUserId: Scalars['UUID']} })
+    provisionTemporaryWorkspaceMember?: (AdminTemporaryAccessGenqlSelection & { __args: {email: Scalars['String'], roleId: Scalars['UUID']} })
     updatePasswordViaResetToken?: (InvalidatePasswordGenqlSelection & { __args: {passwordResetToken: Scalars['String'], newPassword: Scalars['String']} })
     initiateOTPProvisioning?: (InitiateTwoFactorAuthenticationProvisioningGenqlSelection & { __args: {loginToken: Scalars['String'], origin: Scalars['String']} })
     initiateOTPProvisioningForAuthenticatedUser?: InitiateTwoFactorAuthenticationProvisioningGenqlSelection
@@ -8102,6 +8123,14 @@ export interface LogicFunctionLogsInput {applicationId?: (Scalars['UUID'] | null
     export const isVerifyTwoFactorAuthenticationMethod = (obj?: { __typename?: any } | null): obj is VerifyTwoFactorAuthenticationMethod => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isVerifyTwoFactorAuthenticationMethod"')
       return VerifyTwoFactorAuthenticationMethod_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const AdminTemporaryAccess_possibleTypes: string[] = ['AdminTemporaryAccess']
+    export const isAdminTemporaryAccess = (obj?: { __typename?: any } | null): obj is AdminTemporaryAccess => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isAdminTemporaryAccess"')
+      return AdminTemporaryAccess_possibleTypes.includes(obj.__typename)
     }
     
 
