@@ -59,6 +59,7 @@ describe('AuthService', () => {
   >;
   let eventLogEmitterService: EventLogEmitterService;
   let transactionManager: jest.Mocked<Pick<EntityManager, 'save' | 'update'>>;
+  let transactionMock: jest.Mock;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -244,12 +245,12 @@ describe('AuthService', () => {
       save: jest.fn(),
       update: jest.fn(),
     };
-    userRepository.manager.transaction = (async <T>(
-      callback: (entityManager: EntityManager) => Promise<T>,
-    ) =>
-      callback(
-        transactionManager as unknown as EntityManager,
-      )) as EntityManager['transaction'];
+    transactionMock = jest.fn(
+      async <T>(callback: (entityManager: EntityManager) => Promise<T>) =>
+        callback(transactionManager as unknown as EntityManager),
+    );
+    userRepository.manager.transaction =
+      transactionMock as unknown as EntityManager['transaction'];
   });
 
   beforeEach(() => {
@@ -318,7 +319,7 @@ describe('AuthService', () => {
         }),
       ).rejects.toThrow('Access denied');
 
-      expect(userRepository.manager.transaction).not.toHaveBeenCalled();
+      expect(transactionMock).not.toHaveBeenCalled();
     });
   });
 
