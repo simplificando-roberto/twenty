@@ -56,7 +56,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Make the container package public
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh api --method PATCH /user/packages/container/twenty -f visibility=public
+      - name: Verify the exact image is publicly pullable
+        shell: bash
+        run: |
+          token="$(
+            curl --fail --silent --show-error \
+              "https://ghcr.io/token?scope=repository:${{ github.repository_owner }}/twenty:pull" \
+              | jq -r '.token // .access_token // empty'
+          )"
+          test -n "$token"
+          curl --fail --silent --show-error --head \
+            --header "Authorization: Bearer $token" \
+            --header "Accept: application/vnd.oci.image.index.v1+json" \
+            "https://ghcr.io/v2/${{ github.repository_owner }}/twenty/manifests/${{ github.sha }}"
