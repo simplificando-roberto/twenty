@@ -244,9 +244,12 @@ describe('AuthService', () => {
       save: jest.fn(),
       update: jest.fn(),
     };
-    userRepository.manager.transaction = jest.fn(async (callback) =>
-      callback(transactionManager as EntityManager),
-    );
+    userRepository.manager.transaction = (async <T>(
+      callback: (entityManager: EntityManager) => Promise<T>,
+    ) =>
+      callback(
+        transactionManager as unknown as EntityManager,
+      )) as EntityManager['transaction'];
   });
 
   beforeEach(() => {
