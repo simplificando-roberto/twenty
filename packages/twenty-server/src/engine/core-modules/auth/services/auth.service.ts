@@ -21,6 +21,7 @@ import {
 import { INVITATION_APP_TOKEN_TYPES } from 'src/engine/core-modules/workspace-invitation/constants/invitation-app-token-types';
 import { ApplicationRegistrationService } from 'src/engine/core-modules/application/application-registration/application-registration.service';
 import { EventLogEmitterService } from 'src/engine/core-modules/event-logs/emit/event-log-emitter.service';
+import { ADMIN_TEMPORARY_ACCESS_ISSUED_EVENT } from 'src/engine/core-modules/event-logs/emit/events/workspace-event/user/admin-temporary-access-issued';
 import { IMPERSONATION_EVENT } from 'src/engine/core-modules/event-logs/emit/events/workspace-event/impersonation/impersonation';
 import {
   AuthException,
@@ -49,6 +50,7 @@ import { RefreshTokenService } from 'src/engine/core-modules/auth/token/services
 import { WorkspaceAgnosticTokenService } from 'src/engine/core-modules/auth/token/services/workspace-agnostic-token.service';
 import { AuthContextUser } from 'src/engine/core-modules/auth/types/auth-context.type';
 import { JwtTokenTypeEnum } from 'src/engine/core-modules/auth/types/jwt-token-type.enum';
+import { type PasswordResetToken } from 'src/engine/core-modules/auth/types/password-reset-token.type';
 import {
   type AuthProviderWithPasswordType,
   type ExistingUserOrNewUser,
@@ -192,6 +194,16 @@ export class AuthService {
         AuthExceptionCode.INVALID_INPUT,
         {
           userFriendlyMessage: msg`User was not created with email/password`,
+        },
+      );
+    }
+
+    if (user.mustChangePassword) {
+      throw new AuthException(
+        'Password reset required',
+        AuthExceptionCode.FORBIDDEN_EXCEPTION,
+        {
+          userFriendlyMessage: msg`Password reset required.`,
         },
       );
     }
@@ -390,6 +402,16 @@ export class AuthService {
       user,
       new AuthException('User not found', AuthExceptionCode.USER_NOT_FOUND),
     );
+
+    if (user.mustChangePassword) {
+      throw new AuthException(
+        'Password reset required',
+        AuthExceptionCode.FORBIDDEN_EXCEPTION,
+        {
+          userFriendlyMessage: msg`Password reset required.`,
+        },
+      );
+    }
 
     // passwordHash is hidden for security reasons
     user.passwordHash = '';
@@ -652,6 +674,167 @@ export class AuthService {
     return { redirectUrl: redirectUriValidation.parsed.toString() };
   }
 
+  async issueAdminTemporaryAccess({
+    actorUserId,
+    targetUserId,
+    workspaceId,
+  }: {
+    actorUserId: string;
+    targetUserId: string;
+    workspaceId: string;
+  }): Promise<PasswordResetToken & { targetUserId: string }> {
+    await this.userService.hasUserAccessToWorkspaceOrThrow(
+      targetUserId,
+      workspaceId,
+    );
+
+    await this.userService.findUserByIdOrThrow(
+      targetUserId,
+      new AuthException('User not found', AuthExceptionCode.USER_NOT_FOUND),
+    );
+
+    const expiresIn = this.twentyConfigService.get(
+      'PASSWORD_RESET_TOKEN_EXPIRES_IN',
+    );
+
+    if (!expiresIn) {
+      throw new AuthException(
+        'PASSWORD_RESET_TOKEN_EXPIRES_IN constant value not found',
+        AuthExceptionCode.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const passwordResetTokenExpiresAt = addMilliseconds(
+      new Date().getTime(),
+      ms(expiresIn),
+    );
+    const passwordResetToken = crypto.randomBytes(32).toString('hex');
+    const hashedResetToken = crypto
+      .createHash('sha256')
+      .update(passwordResetToken)
+      .digest('hex');
+    const undisclosedPasswordHash = await hashPassword(
+      crypto.randomBytes(32).toString('hex'),
+    );
+    const revokedAt = new Date();
+
+    await this.userRepository.manager.transaction(async (manager) => {
+      await manager.update(UserEntity, targetUserId, {
+        passwordHash: undisclosedPasswordHash,
+        mustChangePassword: true,
+      });
+
+      await manager.update(
+        AppTokenEntity,
+        {
+          userId: targetUserId,
+          type: AppTokenType.RefreshToken,
+          revokedAt: IsNull(),
+        },
+        { revokedAt },
+      );
+
+      await manager.update(
+        AppTokenEntity,
+        {
+          userId: targetUserId,
+          type: AppTokenType.PasswordResetToken,
+          revokedAt: IsNull(),
+        },
+        { revokedAt },
+      );
+
+      await manager.save(AppTokenEntity, {
+        userId: targetUserId,
+        workspaceId,
+        value: hashedResetToken,
+        expiresAt: passwordResetTokenExpiresAt,
+        type: AppTokenType.PasswordResetToken,
+      });
+    });
+
+    void this.eventLogEmitterService
+      .createContext({ workspaceId, userId: actorUserId })
+      .insertWorkspaceEvent(ADMIN_TEMPORARY_ACCESS_ISSUED_EVENT, {
+        targetUserId,
+      });
+
+    return {
+      targetUserId,
+      workspaceId,
+      passwordResetToken,
+      passwordResetTokenExpiresAt,
+    };
+  }
+
+  async provisionTemporaryWorkspaceMember({
+    actorUserId,
+    email,
+    roleId,
+    workspace,
+  }: {
+    actorUserId: string;
+    email: string;
+    roleId: string;
+    workspace: WorkspaceEntity;
+  }): Promise<PasswordResetToken & { targetUserId: string }> {
+    const normalizedEmail = email.toLowerCase();
+    const existingUser =
+      await this.userService.findUserByEmail(normalizedEmail);
+
+    if (isDefined(existingUser)) {
+      throw new AuthException(
+        'An existing global user cannot be provisioned or have credentials overwritten by email',
+        AuthExceptionCode.USER_ALREADY_EXISTS,
+        {
+          userFriendlyMessage: msg`This email already belongs to an existing user. Use the existing-member temporary access action after securely linking the account.`,
+        },
+      );
+    }
+
+    await this.userWorkspaceService.validateRoleForNewMember(roleId, workspace);
+
+    const undisclosedPasswordHash = await hashPassword(
+      crypto.randomBytes(32).toString('hex'),
+    );
+    const isEmailVerificationRequired = this.twentyConfigService.get(
+      'IS_EMAIL_VERIFICATION_REQUIRED',
+    );
+    const user = await this.userRepository.save(
+      this.userRepository.create({
+        email: normalizedEmail,
+        passwordHash: undisclosedPasswordHash,
+        mustChangePassword: true,
+        isEmailVerified: !isEmailVerificationRequired,
+        canImpersonate: false,
+        canAccessFullAdminPanel: false,
+      }),
+    );
+
+    try {
+      await this.userWorkspaceService.addUserToWorkspaceIfUserNotInWorkspace(
+        user,
+        workspace,
+        roleId,
+      );
+      await this.workspaceInvitationService.invalidateWorkspaceInvitation(
+        workspace.id,
+        normalizedEmail,
+      );
+    } catch (error) {
+      // The user is new and cannot belong to another workspace yet, so this
+      // compensates safely if any cross-schema membership step fails.
+      await this.userService.deleteUser(user.id);
+      throw error;
+    }
+
+    return this.issueAdminTemporaryAccess({
+      actorUserId,
+      targetUserId: user.id,
+      workspaceId: workspace.id,
+    });
+  }
+
   async updatePassword(
     userId: string,
     newPassword: string,
@@ -700,6 +883,7 @@ export class AuthService {
 
     await this.userRepository.update(userId, {
       passwordHash: newPasswordHash,
+      mustChangePassword: false,
     });
 
     // Invalidate all existing refresh tokens for this user across all workspaces

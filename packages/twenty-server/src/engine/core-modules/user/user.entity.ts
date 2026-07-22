@@ -68,6 +68,9 @@ export class UserEntity {
   @Column({ nullable: true })
   passwordHash: string;
 
+  @Column({ default: false })
+  mustChangePassword: boolean;
+
   @Field()
   @Column({ default: false })
   canImpersonate: boolean;

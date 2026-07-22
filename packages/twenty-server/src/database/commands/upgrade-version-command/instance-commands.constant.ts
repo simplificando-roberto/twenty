@@ -30,6 +30,7 @@ import { RenameIsUiReadOnlyToIsUiEditableFastInstanceCommand } from 'src/databas
 import { BackfillNonUiCreatableStandardSystemObjectsSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-13/2-13-instance-command-slow-1781277480000-backfill-non-ui-creatable-standard-system-objects';
 import { SetTableWidgetViewsVisibilityToWorkspaceSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-14/2-14-instance-command-slow-1781515653781-set-table-widget-views-visibility-to-workspace';
 import { AddHasPaymentMethodToBillingCustomerFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-15/2-15-instance-command-fast-1781280240009-add-has-payment-method-to-billing-customer';
+import { AddMustChangePasswordToUserFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-23/2-23-instance-command-fast-1784688542403-add-must-change-password-to-user';
 import { AddIsSystemSideEffectFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-15/2-15-instance-command-fast-1781600000000-add-is-system-side-effect';
 import { BackfillConnectionSecuritySlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-15/2-15-instance-command-slow-1781461753981-backfill-connection-security';
 import { AddChannelWebhookSubscriptionFieldsFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-16/2-16-instance-command-fast-1782152096938-add-channel-webhook-subscription-fields';
@@ -183,6 +184,7 @@ export const INSTANCE_COMMANDS = [
   DropIsCustomFromObjectAndFieldMetadataFastInstanceCommand,
   DropEmailingDomainDriverColumnFastInstanceCommand,
   AddHasPaymentMethodToBillingCustomerFastInstanceCommand,
+  AddMustChangePasswordToUserFastInstanceCommand,
   AddEmailingDomainUnsubscribeHostFastInstanceCommand,
   ViewOverridableEntityFastInstanceCommand,
   CreateMessageSuppressionCoreTableFastInstanceCommand,

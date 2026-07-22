@@ -236,6 +236,13 @@ export class UserWorkspaceService {
     });
   }
 
+  async validateRoleForNewMember(
+    roleId: string,
+    workspace: WorkspaceEntity,
+  ): Promise<void> {
+    await this.resolveRoleIdForNewMember(roleId, workspace);
+  }
+
   private async resolveRoleIdForNewMember(
     roleId: string | null | undefined,
     workspace: WorkspaceEntity,

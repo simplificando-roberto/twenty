@@ -13,6 +13,7 @@ import { Repository } from 'typeorm';
 
 import type { FileUpload } from 'graphql-upload/processRequest.mjs';
 
+import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { MetadataResolver } from 'src/engine/api/graphql/graphql-config/decorators/metadata-resolver.decorator';
 import { settings } from 'src/engine/constants/settings';
 import { ApiKeyService } from 'src/engine/core-modules/api-key/services/api-key.service';
@@ -24,6 +25,8 @@ import {
   AuthExceptionCode,
 } from 'src/engine/core-modules/auth/auth.exception';
 import { ApiKeyTokenInput } from 'src/engine/core-modules/auth/dto/api-key-token.input';
+import { AdminTemporaryAccessDTO } from 'src/engine/core-modules/auth/dto/admin-temporary-access.dto';
+import { ProvisionTemporaryWorkspaceMemberInput } from 'src/engine/core-modules/auth/dto/provision-temporary-workspace-member.input';
 import { AppTokenInput } from 'src/engine/core-modules/auth/dto/app-token.input';
 import { AuthorizeAppDTO } from 'src/engine/core-modules/auth/dto/authorize-app.dto';
 import { AuthorizeAppInput } from 'src/engine/core-modules/auth/dto/authorize-app.input';
@@ -904,6 +907,45 @@ export class AuthResolver {
       resetToken,
       email: emailPasswordResetInput.email,
       locale: context.req.locale,
+    });
+  }
+
+  @Mutation(() => AdminTemporaryAccessDTO)
+  @UseGuards(
+    WorkspaceAuthGuard,
+    UserAuthGuard,
+    SettingsPermissionGuard(PermissionFlagType.SECURITY),
+    SettingsPermissionGuard(PermissionFlagType.WORKSPACE_MEMBERS),
+  )
+  async issueAdminTemporaryAccess(
+    @Args('targetUserId', { type: () => UUIDScalarType }) targetUserId: string,
+    @AuthUser() actor: AuthContextUser,
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<AdminTemporaryAccessDTO> {
+    return this.authService.issueAdminTemporaryAccess({
+      actorUserId: actor.id,
+      targetUserId,
+      workspaceId: workspace.id,
+    });
+  }
+
+  @Mutation(() => AdminTemporaryAccessDTO)
+  @UseGuards(
+    WorkspaceAuthGuard,
+    UserAuthGuard,
+    SettingsPermissionGuard(PermissionFlagType.SECURITY),
+    SettingsPermissionGuard(PermissionFlagType.WORKSPACE_MEMBERS),
+  )
+  async provisionTemporaryWorkspaceMember(
+    @Args() { email, roleId }: ProvisionTemporaryWorkspaceMemberInput,
+    @AuthUser() actor: AuthContextUser,
+    @AuthWorkspace() workspace: WorkspaceEntity,
+  ): Promise<AdminTemporaryAccessDTO> {
+    return this.authService.provisionTemporaryWorkspaceMember({
+      actorUserId: actor.id,
+      email,
+      roleId,
+      workspace,
     });
   }
 
