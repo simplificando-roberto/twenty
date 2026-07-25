@@ -10,13 +10,15 @@ const buildArgs = ({
   roleId = SCOPED_ROLE_ID,
   authContextType = 'user',
   queryType = 'select',
-  schema = SCHEMA as string | undefined,
+  // Un valor por defecto se aplica tambien cuando pasas undefined a proposito,
+  // asi que el caso sin esquema necesita su propia bandera.
+  withoutSchema = false,
 }: {
   nameSingular?: string;
   roleId?: string;
   authContextType?: 'user' | 'apiKey';
   queryType?: string;
-  schema?: string;
+  withoutSchema?: boolean;
 } = {}) => {
   const andWhere = jest.fn();
 
@@ -34,7 +36,10 @@ const buildArgs = ({
     args: {
       queryBuilder: {
         andWhere,
-        expressionMap: { queryType, mainAlias: { metadata: { schema } } },
+        expressionMap: {
+          queryType,
+          mainAlias: { metadata: { schema: withoutSchema ? undefined : SCHEMA } },
+        },
       },
       objectMetadata: { nameSingular },
       internalContext: {
@@ -118,7 +123,7 @@ describe('applyLoangOwnerScope', () => {
   });
 
   it('cierra cuando no se puede saber el esquema del workspace', () => {
-    const { andWhere, args } = buildArgs({ schema: undefined });
+    const { andWhere, args } = buildArgs({ withoutSchema: true });
 
     applyLoangOwnerScope(args);
 
