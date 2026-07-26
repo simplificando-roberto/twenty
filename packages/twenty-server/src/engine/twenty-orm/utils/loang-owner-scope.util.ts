@@ -23,10 +23,21 @@ const PERSON = 'person';
 const COMPANY = 'company';
 const TASK = 'task';
 const TASK_TARGET = 'taskTarget';
+const TIMELINE_ACTIVITY = 'timelineActivity';
 
 // La lista blanca. Un objeto que no este aqui sale de la consulta sin filtrar,
 // asi que dar lectura sobre el equivale a dar lectura del workspace entero.
-const SCOPED_OBJECTS = new Set([PERSON, COMPANY, TASK, TASK_TARGET]);
+// Ojo con los objetos de sistema (taskTarget, timelineActivity): el cache de
+// permisos calcula `isSystem ? true`, o sea que se leen aunque el rol tenga
+// todo cerrado y no exista fila en objectPermission. Para esos, este filtro es
+// lo unico que hay.
+const SCOPED_OBJECTS = new Set([
+  PERSON,
+  COMPANY,
+  TASK,
+  TASK_TARGET,
+  TIMELINE_ACTIVITY,
+]);
 
 // Columna de asignacion manual desde la interfaz, por si un responsable quiere
 // mover un registro sin pasar por una tarea. La asignacion automatica de Loang
@@ -75,15 +86,24 @@ export const buildLoangOwnerCondition = ({
   objectNameSingular,
   schema,
   useDirectTableReference,
+  alias,
 }: {
   objectNameSingular: string;
   schema: string;
   useDirectTableReference: boolean;
+  // Solo lo usa ownedRecordIds, para reconstruir la misma condicion dentro de
+  // una subconsulta con su propio alias.
+  alias?: string;
 }): string => {
-  const ref = (column: string): string =>
-    useDirectTableReference
+  const ref = (column: string): string => {
+    if (isDefined(alias)) {
+      return `"${alias}"."${column}"`;
+    }
+
+    return useDirectTableReference
       ? `"${column}"`
       : `"${objectNameSingular}"."${column}"`;
+  };
 
   const ownerColumn = OWNER_COLUMN_BY_OBJECT[objectNameSingular];
   const branches = isDefined(ownerColumn)
@@ -121,8 +141,34 @@ export const buildLoangOwnerCondition = ({
     branches.push(`${ref('taskId')} IN (${ownedTaskIds(schema)})`);
   }
 
+  // El timeline tampoco tiene duenyo: lo hereda del registro al que apunta, y
+  // se reusa la condicion de ese registro para que no pueda enseniar mas que la
+  // propia ficha. Lo que apunta a otra cosa (nota, oportunidad, workflow) o a
+  // nada se queda fuera, que es el lado seguro.
+  if (objectNameSingular === TIMELINE_ACTIVITY) {
+    branches.push(
+      `${ref('targetPersonId')} IN (${ownedRecordIds(schema, PERSON, 'lp')})`,
+      `${ref('targetCompanyId')} IN (${ownedRecordIds(schema, COMPANY, 'lc')})`,
+      `${ref('targetTaskId')} IN (${ownedTaskIds(schema)})`,
+    );
+  }
+
   return `(${branches.join(' OR ')})`;
 };
+
+const ownedRecordIds = (
+  schema: string,
+  objectNameSingular: string,
+  alias: string,
+): string =>
+  `SELECT "${alias}"."id" FROM "${schema}"."${objectNameSingular}" "${alias}" ` +
+  `WHERE "${alias}"."deletedAt" IS NULL AND ` +
+  buildLoangOwnerCondition({
+    objectNameSingular,
+    schema,
+    useDirectTableReference: false,
+    alias,
+  });
 
 export const applyLoangOwnerScope = <T extends ObjectLiteral>({
   queryBuilder,
