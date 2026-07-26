@@ -38,7 +38,9 @@ const buildArgs = ({
         andWhere,
         expressionMap: {
           queryType,
-          mainAlias: { metadata: { schema: withoutSchema ? undefined : SCHEMA } },
+          mainAlias: {
+            metadata: { schema: withoutSchema ? undefined : SCHEMA },
+          },
         },
       },
       objectMetadata: { nameSingular },
