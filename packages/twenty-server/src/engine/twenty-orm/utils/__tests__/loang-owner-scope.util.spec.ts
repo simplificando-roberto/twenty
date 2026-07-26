@@ -108,8 +108,39 @@ describe('applyLoangOwnerScope', () => {
     expect(andWhere).not.toHaveBeenCalled();
   });
 
-  it('no toca los objetos sin duenyo declarado', () => {
+  it('acota las tareas a las asignadas y las creadas por el comercial', () => {
     const { andWhere, args } = buildArgs({ nameSingular: 'task' });
+
+    applyLoangOwnerScope(args);
+
+    const sql = sqlOf(andWhere);
+
+    expect(sql).toContain('"task"."assigneeId" = :loangOwnerId');
+    expect(sql).toContain(
+      '"task"."createdByWorkspaceMemberId" = :loangOwnerId',
+    );
+    // Las ramas de empresa son SQL contra columnas que task no tiene.
+    expect(sql).not.toContain('companyId');
+  });
+
+  it('hace que el enlace de tarea siga a su tarea', () => {
+    const { andWhere, args } = buildArgs({ nameSingular: 'taskTarget' });
+
+    applyLoangOwnerScope(args);
+
+    const sql = sqlOf(andWhere);
+
+    expect(sql).toContain(`"taskTarget"."taskId" IN (SELECT t."id"`);
+    expect(sql).toContain('t."assigneeId" = :loangOwnerId');
+    // No tiene columna de duenyo propia: solo hereda o es suyo por creacion.
+    expect(sql).toContain(
+      '"taskTarget"."createdByWorkspaceMemberId" = :loangOwnerId',
+    );
+    expect(sql).not.toContain('"taskTarget"."assigneeId"');
+  });
+
+  it('no toca los objetos fuera de la lista blanca', () => {
+    const { andWhere, args } = buildArgs({ nameSingular: 'opportunity' });
 
     applyLoangOwnerScope(args);
 
