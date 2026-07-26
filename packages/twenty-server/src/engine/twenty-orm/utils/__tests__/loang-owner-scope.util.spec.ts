@@ -139,6 +139,28 @@ describe('applyLoangOwnerScope', () => {
     expect(sql).not.toContain('"taskTarget"."assigneeId"');
   });
 
+  it('hace que el timeline siga al registro del que habla', () => {
+    // Es objeto de sistema: se lee siempre, el rol no puede cerrarlo. Sin esta
+    // rama una comercial listaba por API 29218 filas, con el mapa entero de
+    // quien lleva a quien en el diff de person.updated.
+    const { andWhere, args } = buildArgs({ nameSingular: 'timelineActivity' });
+
+    applyLoangOwnerScope(args);
+
+    const sql = sqlOf(andWhere);
+
+    expect(sql).toContain('"timelineActivity"."targetPersonId" IN (SELECT');
+    expect(sql).toContain('"lp"."comercialId" = :loangOwnerId');
+    expect(sql).toContain('"timelineActivity"."targetCompanyId" IN (SELECT');
+    expect(sql).toContain('"lc"."accountOwnerId" = :loangOwnerId');
+    expect(sql).toContain(
+      '"timelineActivity"."targetTaskId" IN (SELECT t."id"',
+    );
+    // Nota, oportunidad y workflow no se mapean: sus filas se quedan fuera.
+    expect(sql).not.toContain('targetNoteId');
+    expect(sql).not.toContain('targetOpportunityId');
+  });
+
   it('no toca los objetos fuera de la lista blanca', () => {
     const { andWhere, args } = buildArgs({ nameSingular: 'opportunity' });
 
