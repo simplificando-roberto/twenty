@@ -21,13 +21,22 @@ type ApplyRowLevelPermissionPredicatesArgs<T extends ObjectLiteral> = {
 
 const PERSON = 'person';
 const COMPANY = 'company';
+const TASK = 'task';
+const TASK_TARGET = 'taskTarget';
+
+// La lista blanca. Un objeto que no este aqui sale de la consulta sin filtrar,
+// asi que dar lectura sobre el equivale a dar lectura del workspace entero.
+const SCOPED_OBJECTS = new Set([PERSON, COMPANY, TASK, TASK_TARGET]);
 
 // Columna de asignacion manual desde la interfaz, por si un responsable quiere
 // mover un registro sin pasar por una tarea. La asignacion automatica de Loang
 // no usa esto: llega como Task + TaskTarget (migracion 011).
+// taskTarget no aparece a proposito: no tiene duenyo propio, lo hereda de su
+// tarea.
 const OWNER_COLUMN_BY_OBJECT: Record<string, string> = {
   [PERSON]: 'comercialId',
   [COMPANY]: 'accountOwnerId',
+  [TASK]: 'assigneeId',
 };
 
 let cachedRawRoleIds: string | undefined;
@@ -52,10 +61,15 @@ const getScopedRoleIds = (): Set<string> => {
 };
 
 const assignedTargetIds = (schema: string, targetColumn: string): string =>
-  `SELECT tt."${targetColumn}" FROM "${schema}"."taskTarget" tt ` +
-  `JOIN "${schema}"."task" t ON t."id" = tt."taskId" AND t."deletedAt" IS NULL ` +
+  `SELECT tt."${targetColumn}" FROM "${schema}"."${TASK_TARGET}" tt ` +
+  `JOIN "${schema}"."${TASK}" t ON t."id" = tt."taskId" AND t."deletedAt" IS NULL ` +
   `WHERE tt."deletedAt" IS NULL AND tt."${targetColumn}" IS NOT NULL ` +
   `AND t."assigneeId" = :loangOwnerId`;
+
+const ownedTaskIds = (schema: string): string =>
+  `SELECT t."id" FROM "${schema}"."${TASK}" t WHERE t."deletedAt" IS NULL ` +
+  `AND (t."assigneeId" = :loangOwnerId ` +
+  `OR t."createdByWorkspaceMemberId" = :loangOwnerId)`;
 
 export const buildLoangOwnerCondition = ({
   objectNameSingular,
@@ -71,16 +85,22 @@ export const buildLoangOwnerCondition = ({
       ? `"${column}"`
       : `"${objectNameSingular}"."${column}"`;
 
-  const branches = [
-    `${ref(OWNER_COLUMN_BY_OBJECT[objectNameSingular])} = :loangOwnerId`,
-    `${ref('createdByWorkspaceMemberId')} = :loangOwnerId`,
-  ];
+  const ownerColumn = OWNER_COLUMN_BY_OBJECT[objectNameSingular];
+  const branches = isDefined(ownerColumn)
+    ? [`${ref(ownerColumn)} = :loangOwnerId`]
+    : [];
 
+  branches.push(`${ref('createdByWorkspaceMemberId')} = :loangOwnerId`);
+
+  // Un else aqui daria las ramas de empresa a cualquier objeto nuevo de la
+  // lista blanca, que es SQL contra columnas que no existen.
   if (objectNameSingular === PERSON) {
     branches.push(
       `${ref('id')} IN (${assignedTargetIds(schema, 'targetPersonId')})`,
     );
-  } else {
+  }
+
+  if (objectNameSingular === COMPANY) {
     branches.push(
       `${ref('id')} IN (${assignedTargetIds(schema, 'targetCompanyId')})`,
     );
@@ -95,6 +115,12 @@ export const buildLoangOwnerCondition = ({
     );
   }
 
+  // El enlace sigue a su tarea. Sin esta rama la tarea se ve pero sale sin
+  // contacto, y con la rama de arriba sola veria los enlaces de todo el mundo.
+  if (objectNameSingular === TASK_TARGET) {
+    branches.push(`${ref('taskId')} IN (${ownedTaskIds(schema)})`);
+  }
+
   return `(${branches.join(' OR ')})`;
 };
 
@@ -106,7 +132,7 @@ export const applyLoangOwnerScope = <T extends ObjectLiteral>({
 }: ApplyRowLevelPermissionPredicatesArgs<T>): void => {
   const objectNameSingular = objectMetadata.nameSingular;
 
-  if (!isDefined(OWNER_COLUMN_BY_OBJECT[objectNameSingular])) {
+  if (!SCOPED_OBJECTS.has(objectNameSingular)) {
     return;
   }
 
