@@ -211,4 +211,28 @@ describe('serializeEvent', () => {
       { name: 'a.png', size: 1, type: 'image/png', lastModified: 1 },
     ]);
   });
+
+  it('should forward bounded file content only for an opted-in input', () => {
+    const file = new File(['xlsx'], 'contacts.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      lastModified: 1,
+    });
+    const result = serializeEvent({
+      type: 'change',
+      target: {
+        dataset: { remoteDomForwardFileContent: 'true' },
+        files: { length: 1, 0: file },
+      },
+    });
+
+    expect(result.files).toEqual([
+      {
+        name: 'contacts.xlsx',
+        size: file.size,
+        type: file.type,
+        lastModified: 1,
+        content: file,
+      },
+    ]);
+  });
 });

@@ -3,4 +3,5 @@ export type SerializedFileData = {
   size: number;
   type: string;
   lastModified: number;
+  content?: Blob;
 };
