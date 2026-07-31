@@ -2,8 +2,14 @@ import { isNumber, isObject, isString } from '@sniptt/guards';
 
 import { type SerializedFileData } from '@/types/SerializedFileData';
 
+type SerializeFileListOptions = {
+  includeContent?: boolean;
+  maxTotalContentBytes?: number;
+};
+
 export const serializeFileList = (
   files: unknown,
+  options: SerializeFileListOptions = {},
 ): SerializedFileData[] | undefined => {
   if (!isObject(files)) {
     return undefined;
@@ -14,6 +20,7 @@ export const serializeFileList = (
   }
 
   const serialized: SerializedFileData[] = [];
+  const contentCandidates: Blob[] = [];
   for (let index = 0; index < fileListLike.length; index++) {
     const file = fileListLike[index];
     if (!isObject(file)) {
@@ -34,6 +41,30 @@ export const serializeFileList = (
       type: fileRecord.type,
       lastModified: fileRecord.lastModified,
     });
+
+    if (typeof Blob !== 'undefined' && file instanceof Blob) {
+      contentCandidates.push(file);
+    }
+  }
+
+  const totalContentBytes = contentCandidates.reduce(
+    (total, file) => total + file.size,
+    0,
+  );
+  const canForwardAllContent =
+    options.includeContent === true &&
+    contentCandidates.length === serialized.length &&
+    (options.maxTotalContentBytes === undefined ||
+      totalContentBytes <= options.maxTotalContentBytes);
+
+  if (canForwardAllContent) {
+    for (let index = 0; index < serialized.length; index++) {
+      const serializedFile = serialized[index];
+      const content = contentCandidates[index];
+      if (serializedFile !== undefined && content !== undefined) {
+        serializedFile.content = content;
+      }
+    }
   }
 
   return serialized;

@@ -7,6 +7,8 @@ import { applyPasteClipboardText } from '@/host/utils/applyPasteClipboardText';
 import { serializeFileList } from '@/host/utils/serializeFileList';
 import { type SerializedEventData } from '@/types/SerializedEventData';
 
+const MAX_FORWARDED_FILE_CONTENT_BYTES = 5 * 1024 * 1024;
+
 export const serializeEvent = (event: unknown): SerializedEventData => {
   if (!isObject(event)) {
     return { type: 'unknown' };
@@ -175,7 +177,13 @@ export const serializeEvent = (event: unknown): SerializedEventData => {
       serialized.playbackRate = targetRecord.playbackRate;
     }
 
-    const files = serializeFileList(targetRecord.files);
+    const dataset = isObject(targetRecord.dataset)
+      ? (targetRecord.dataset as Record<string, unknown>)
+      : undefined;
+    const files = serializeFileList(targetRecord.files, {
+      includeContent: dataset?.remoteDomForwardFileContent === 'true',
+      maxTotalContentBytes: MAX_FORWARDED_FILE_CONTENT_BYTES,
+    });
     if (isDefined(files)) {
       serialized.files = files;
     }
