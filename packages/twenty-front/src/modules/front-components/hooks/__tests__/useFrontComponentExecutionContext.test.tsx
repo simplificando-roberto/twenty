@@ -13,6 +13,7 @@ import { useFrontComponentExecutionContext } from '@/front-components/hooks/useF
 const mockNavigateApp = jest.fn();
 const mockRequestAccessTokenRefresh = jest.fn();
 const mockOpenConfirmationModal = jest.fn();
+const mockCloseConfirmationModal = jest.fn();
 const mockNavigateSidePanel = jest.fn();
 const mockOpenRecordInSidePanel = jest.fn();
 const mockOpenRichTextInSidePanel = jest.fn();
@@ -49,6 +50,7 @@ jest.mock(
   '@/command-menu-item/confirmation-modal/hooks/useCommandMenuConfirmationModal',
   () => ({
     useCommandMenuConfirmationModal: () => ({
+      closeConfirmationModal: mockCloseConfirmationModal,
       openConfirmationModal: mockOpenConfirmationModal,
     }),
   }),
@@ -785,6 +787,71 @@ describe('useFrontComponentExecutionContext', () => {
 
       expect(mockPrepareXlsxDownload).toHaveBeenCalledTimes(1);
       nowSpy.mockRestore();
+    });
+
+    it('keeps the rate limit after the front component remounts', async () => {
+      const frontComponentId = 'fc-download-remount';
+      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(50_000);
+      const firstRender = renderUseFrontComponentExecutionContext({
+        frontComponentId,
+      });
+      let firstDownloadPromise: Promise<void> | undefined;
+
+      await act(async () => {
+        firstDownloadPromise =
+          firstRender.result.current.frontComponentHostCommunicationApi.downloadXlsx(
+            downloadParams,
+          );
+        await Promise.resolve();
+      });
+      await act(async () => {
+        dispatchDownloadConfirmation(frontComponentId, 'cancel');
+        await firstDownloadPromise;
+      });
+      firstRender.unmount();
+
+      nowSpy.mockReturnValue(50_100);
+      const secondRender = renderUseFrontComponentExecutionContext({
+        frontComponentId,
+      });
+      await expect(
+        secondRender.result.current.frontComponentHostCommunicationApi.downloadXlsx(
+          downloadParams,
+        ),
+      ).rejects.toThrow('FRONT_COMPONENT_DOWNLOAD_RATE_LIMITED');
+
+      secondRender.unmount();
+      nowSpy.mockRestore();
+    });
+
+    it('closes its host modal when confirmation times out', async () => {
+      jest.useFakeTimers();
+      const frontComponentId = 'fc-download-timeout';
+      const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(40_000);
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId,
+      });
+
+      const downloadPromise =
+        result.current.frontComponentHostCommunicationApi.downloadXlsx(
+          downloadParams,
+        );
+      const timeoutExpectation = expect(downloadPromise).rejects.toThrow(
+        'FRONT_COMPONENT_DOWNLOAD_CONFIRMATION_TIMEOUT',
+      );
+      await act(async () => {
+        jest.advanceTimersByTime(60_000);
+      });
+
+      await timeoutExpectation;
+      expect(mockCloseConfirmationModal).toHaveBeenCalledWith({
+        type: 'frontComponent',
+        frontComponentId,
+      });
+      expect(mockDownloadPreparedXlsx).not.toHaveBeenCalled();
+
+      nowSpy.mockRestore();
+      jest.useRealTimers();
     });
   });
 

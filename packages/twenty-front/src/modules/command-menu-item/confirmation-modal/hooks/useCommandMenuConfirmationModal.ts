@@ -9,13 +9,14 @@ import {
 import { useModal } from '@/ui/layout/modal/hooks/useModal';
 import { isModalOpenedComponentState } from '@/ui/layout/modal/states/isModalOpenedComponentState';
 import { useSetAtomState } from '@/ui/utilities/state/jotai/hooks/useSetAtomState';
+import { type ConfirmationModalCaller } from 'twenty-shared/types';
 
 export const useCommandMenuConfirmationModal = () => {
   const store = useStore();
   const setCommandMenuItemConfirmationModalConfig = useSetAtomState(
     commandMenuItemConfirmationModalConfigState,
   );
-  const { openModal } = useModal();
+  const { closeModal, openModal } = useModal();
 
   const openConfirmationModal = useCallback(
     (config: CommandMenuItemConfirmationModalConfig) => {
@@ -44,5 +45,33 @@ export const useCommandMenuConfirmationModal = () => {
     [store, setCommandMenuItemConfirmationModalConfig, openModal],
   );
 
-  return { openConfirmationModal };
+  const closeConfirmationModal = useCallback(
+    (caller: ConfirmationModalCaller) => {
+      const existingConfig = store.get(
+        commandMenuItemConfirmationModalConfigState.atom,
+      );
+      if (existingConfig === null) {
+        return;
+      }
+
+      const existingCaller = existingConfig.caller;
+      const isSameCaller =
+        (caller.type === 'frontComponent' &&
+          existingCaller.type === 'frontComponent' &&
+          caller.frontComponentId === existingCaller.frontComponentId) ||
+        (caller.type === 'commandMenuItem' &&
+          existingCaller.type === 'commandMenuItem' &&
+          caller.commandMenuItemId === existingCaller.commandMenuItemId);
+
+      if (!isSameCaller) {
+        return;
+      }
+
+      setCommandMenuItemConfirmationModalConfig(null);
+      closeModal(COMMAND_MENU_CONFIRMATION_MODAL_INSTANCE_ID);
+    },
+    [store, setCommandMenuItemConfirmationModalConfig, closeModal],
+  );
+
+  return { closeConfirmationModal, openConfirmationModal };
 };

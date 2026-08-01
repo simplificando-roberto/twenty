@@ -11,29 +11,138 @@ const XLSX_REQUIRED_ARCHIVE_ENTRIES = [
   'xl/workbook.xml',
 ];
 const FRONT_COMPONENT_DOWNLOAD_MAX_FILENAME_LENGTH = 240;
+const ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE = 0x06054b50;
+const ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE = 0x02014b50;
+const ZIP_LOCAL_FILE_HEADER_SIGNATURE = 0x04034b50;
+const ZIP_END_OF_CENTRAL_DIRECTORY_MIN_SIZE = 22;
+const ZIP_MAX_COMMENT_LENGTH = 65_535;
 
 export type PreparedFrontComponentXlsxDownload = {
   bytes: Uint8Array;
   filename: string;
 };
 
-const containsAscii = (bytes: Uint8Array, text: string): boolean => {
-  const textBytes = Array.from(text, (character) => character.charCodeAt(0));
+const assertValidXlsxArchiveEntries = (bytes: Uint8Array): void => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const minimumEocdOffset = Math.max(
+    0,
+    bytes.length -
+      ZIP_END_OF_CENTRAL_DIRECTORY_MIN_SIZE -
+      ZIP_MAX_COMMENT_LENGTH,
+  );
+  let eocdOffset = -1;
 
-  search: for (
-    let start = 0;
-    start <= bytes.length - textBytes.length;
-    start += 1
+  for (
+    let offset = bytes.length - ZIP_END_OF_CENTRAL_DIRECTORY_MIN_SIZE;
+    offset >= minimumEocdOffset;
+    offset -= 1
   ) {
-    for (let offset = 0; offset < textBytes.length; offset += 1) {
-      if (bytes[start + offset] !== textBytes[offset]) {
-        continue search;
-      }
+    if (
+      view.getUint32(offset, true) === ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE &&
+      offset +
+        ZIP_END_OF_CENTRAL_DIRECTORY_MIN_SIZE +
+        view.getUint16(offset + 20, true) ===
+        bytes.length
+    ) {
+      eocdOffset = offset;
+      break;
     }
-    return true;
   }
 
-  return false;
+  if (eocdOffset < 0) {
+    throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+  }
+
+  const diskNumber = view.getUint16(eocdOffset + 4, true);
+  const centralDirectoryDisk = view.getUint16(eocdOffset + 6, true);
+  const entriesOnDisk = view.getUint16(eocdOffset + 8, true);
+  const totalEntries = view.getUint16(eocdOffset + 10, true);
+  const centralDirectorySize = view.getUint32(eocdOffset + 12, true);
+  const centralDirectoryOffset = view.getUint32(eocdOffset + 16, true);
+
+  if (
+    diskNumber !== 0 ||
+    centralDirectoryDisk !== 0 ||
+    entriesOnDisk !== totalEntries ||
+    totalEntries === 0 ||
+    totalEntries === 0xffff ||
+    centralDirectorySize === 0xffffffff ||
+    centralDirectoryOffset === 0xffffffff ||
+    centralDirectoryOffset + centralDirectorySize !== eocdOffset
+  ) {
+    throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+  }
+
+  const requiredEntries = new Set(XLSX_REQUIRED_ARCHIVE_ENTRIES);
+  let centralOffset = centralDirectoryOffset;
+
+  for (let entryIndex = 0; entryIndex < totalEntries; entryIndex += 1) {
+    if (
+      centralOffset + 46 > eocdOffset ||
+      view.getUint32(centralOffset, true) !==
+        ZIP_CENTRAL_DIRECTORY_HEADER_SIGNATURE
+    ) {
+      throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+    }
+
+    const filenameLength = view.getUint16(centralOffset + 28, true);
+    const extraLength = view.getUint16(centralOffset + 30, true);
+    const commentLength = view.getUint16(centralOffset + 32, true);
+    const localHeaderOffset = view.getUint32(centralOffset + 42, true);
+    const filenameStart = centralOffset + 46;
+    const filenameEnd = filenameStart + filenameLength;
+    const nextCentralOffset = filenameEnd + extraLength + commentLength;
+
+    if (
+      filenameLength === 0 ||
+      nextCentralOffset > eocdOffset ||
+      localHeaderOffset + 30 > centralDirectoryOffset ||
+      view.getUint32(localHeaderOffset, true) !==
+        ZIP_LOCAL_FILE_HEADER_SIGNATURE
+    ) {
+      throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+    }
+
+    const localFilenameLength = view.getUint16(localHeaderOffset + 26, true);
+    const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+    const localFilenameStart = localHeaderOffset + 30;
+    const localFilenameEnd = localFilenameStart + localFilenameLength;
+
+    if (
+      localFilenameLength !== filenameLength ||
+      localFilenameEnd + localExtraLength > centralDirectoryOffset
+    ) {
+      throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+    }
+
+    for (let index = 0; index < filenameLength; index += 1) {
+      if (bytes[filenameStart + index] !== bytes[localFilenameStart + index]) {
+        throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+      }
+    }
+
+    for (const requiredEntry of requiredEntries) {
+      if (
+        requiredEntry.length === filenameLength &&
+        Array.from(requiredEntry).every(
+          (character, index) =>
+            bytes[filenameStart + index] === character.charCodeAt(0),
+        )
+      ) {
+        requiredEntries.delete(requiredEntry);
+        break;
+      }
+    }
+    centralOffset = nextCentralOffset;
+  }
+
+  if (
+    centralOffset !== eocdOffset ||
+    centralOffset !== centralDirectoryOffset + centralDirectorySize ||
+    requiredEntries.size > 0
+  ) {
+    throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+  }
 };
 
 const sanitizeXlsxFilename = (filename: string): string => {
@@ -85,13 +194,7 @@ const decodeValidatedXlsx = (contentBase64: string): Uint8Array => {
     bytes[index] = binary.charCodeAt(index);
   }
 
-  if (
-    XLSX_REQUIRED_ARCHIVE_ENTRIES.some(
-      (entryName) => !containsAscii(bytes, entryName),
-    )
-  ) {
-    throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
-  }
+  assertValidXlsxArchiveEntries(bytes);
 
   return bytes;
 };

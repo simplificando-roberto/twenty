@@ -73,7 +73,8 @@ export const useFrontComponentExecutionContext = ({
   const { requestAccessTokenRefresh } = useRequestApplicationTokenRefresh({
     frontComponentId,
   });
-  const { openConfirmationModal } = useCommandMenuConfirmationModal();
+  const { closeConfirmationModal, openConfirmationModal } =
+    useCommandMenuConfirmationModal();
   const { openAskAiPageWithPreprompt } = useOpenAskAiPageWithPreprompt();
   const { navigateSidePanel } = useNavigateSidePanel();
   const { openRecordInSidePanel: openRecordInSidePanelInternal } =
@@ -370,6 +371,10 @@ export const useFrontComponentExecutionContext = ({
 
       const shouldDownload = await new Promise<boolean>((resolve, reject) => {
         let confirmationTimeoutId: number | undefined;
+        const modalCaller = {
+          type: 'frontComponent' as const,
+          frontComponentId,
+        };
 
         const cleanup = () => {
           window.removeEventListener(
@@ -403,12 +408,13 @@ export const useFrontComponentExecutionContext = ({
         );
         confirmationTimeoutId = window.setTimeout(() => {
           cleanup();
+          closeConfirmationModal(modalCaller);
           reject(new Error('FRONT_COMPONENT_DOWNLOAD_CONFIRMATION_TIMEOUT'));
         }, FRONT_COMPONENT_DOWNLOAD_CONFIRMATION_TIMEOUT_MS);
 
         try {
           openConfirmationModal({
-            caller: { type: 'frontComponent', frontComponentId },
+            caller: modalCaller,
             title: 'Descargar archivo',
             subtitle: `La aplicación quiere descargar "${preparedDownload.filename}".`,
             confirmButtonText: 'Descargar',
