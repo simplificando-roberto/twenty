@@ -103,6 +103,7 @@ const createRealXlsxBase64 = (): string => {
 };
 
 const XLSX_BASE64 = createRealXlsxBase64();
+const TRUNCATED_XLSX_BYTES = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
 const FAKE_XLSX_BYTES = Buffer.alloc(256);
 FAKE_XLSX_BYTES.set([0x50, 0x4b, 0x03, 0x04]);
 FAKE_XLSX_BYTES.write('[Content_Types].xml', 16, 'ascii');
@@ -212,6 +213,11 @@ describe('downloadBase64FileFromFrontComponent', () => {
     {
       filename: 'x.xlsx',
       contentBase64: ` ${XLSX_BASE64}`,
+      mimeType: FRONT_COMPONENT_XLSX_MIME_TYPE,
+    },
+    {
+      filename: 'x.xlsx',
+      contentBase64: TRUNCATED_XLSX_BYTES.toString('base64'),
       mimeType: FRONT_COMPONENT_XLSX_MIME_TYPE,
     },
     {

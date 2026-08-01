@@ -23,6 +23,10 @@ export type PreparedFrontComponentXlsxDownload = {
 };
 
 const assertValidXlsxArchiveEntries = (bytes: Uint8Array): void => {
+  if (bytes.length < ZIP_END_OF_CENTRAL_DIRECTORY_MIN_SIZE) {
+    throw new Error('FRONT_COMPONENT_DOWNLOAD_INVALID');
+  }
+
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const minimumEocdOffset = Math.max(
     0,
