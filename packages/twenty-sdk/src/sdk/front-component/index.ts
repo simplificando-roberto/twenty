@@ -2,6 +2,7 @@ export { Trans } from './components/Trans';
 export type { TransProps } from './components/Trans';
 export { closeSidePanel } from './functions/closeSidePanel';
 export { copyToClipboard } from './functions/copyToClipboard';
+export { downloadXlsx } from './functions/downloadXlsx';
 export { getApplicationVariable } from './functions/getApplicationVariable';
 export { enqueueSnackbar } from './functions/enqueueSnackbar';
 export { navigate } from './functions/navigate';
@@ -31,6 +32,8 @@ export type {
   CommandConfirmationModalAccent,
   CommandConfirmationModalResult,
   CopyToClipboardFunction,
+  DownloadXlsxFunction,
+  DownloadXlsxParams,
   EnqueueSnackbarFunction,
   NavigateFunction,
   OpenCommandConfirmationModalFunction,

@@ -8,10 +8,12 @@ import {
 } from 'twenty-front-component-renderer';
 import {
   AppPath,
+  type CommandMenuConfirmationModalResultBrowserEventDetail,
   SidePanelPages,
   type EnqueueSnackbarParams,
 } from 'twenty-shared/types';
 import { type AppLocale } from 'twenty-shared/translations';
+import { COMMAND_MENU_CONFIRMATION_MODAL_RESULT_BROWSER_EVENT_NAME } from 'twenty-shared/constants';
 
 import { useOpenAskAiPageWithPreprompt } from '@/ai/hooks/useOpenAskAiPageWithPreprompt';
 import { currentUserState } from '@/auth/states/currentUserState';
@@ -21,6 +23,10 @@ import { commandMenuItemProgressFamilyState } from '@/command-menu-item/states/c
 import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { contextStoreRecordShowParentViewComponentState } from '@/context-store/states/contextStoreRecordShowParentViewComponentState';
 import { useRequestApplicationTokenRefresh } from '@/front-components/hooks/useRequestApplicationTokenRefresh';
+import {
+  downloadPreparedXlsxFromFrontComponent,
+  prepareXlsxDownloadFromFrontComponent,
+} from '@/front-components/utils/downloadBase64FileFromFrontComponent';
 import { canOpenObjectInSidePanel } from '@/object-record/utils/canOpenObjectInSidePanel';
 import { useNavigateSidePanel } from '@/side-panel/hooks/useNavigateSidePanel';
 import { useOpenComposeEmailInSidePanel } from '@/side-panel/hooks/useOpenComposeEmailInSidePanel';
@@ -43,6 +49,9 @@ import { useNavigateApp } from '~/hooks/useNavigateApp';
 const FRONT_COMPONENT_CLIPBOARD_MAX_LENGTH = 64 * 1024;
 const FRONT_COMPONENT_CLIPBOARD_RATE_LIMIT_MS = 1000;
 const FRONT_COMPONENT_CLIPBOARD_PREVIEW_LENGTH = 30;
+const FRONT_COMPONENT_DOWNLOAD_RATE_LIMIT_MS = 500;
+const FRONT_COMPONENT_DOWNLOAD_CONFIRMATION_TIMEOUT_MS = 60_000;
+const lastDownloadXlsxCallAtByFrontComponentId = new Map<string, number>();
 
 export const useFrontComponentExecutionContext = ({
   frontComponentId,
@@ -64,7 +73,8 @@ export const useFrontComponentExecutionContext = ({
   const { requestAccessTokenRefresh } = useRequestApplicationTokenRefresh({
     frontComponentId,
   });
-  const { openConfirmationModal } = useCommandMenuConfirmationModal();
+  const { closeConfirmationModal, openConfirmationModal } =
+    useCommandMenuConfirmationModal();
   const { openAskAiPageWithPreprompt } = useOpenAskAiPageWithPreprompt();
   const { navigateSidePanel } = useNavigateSidePanel();
   const { openRecordInSidePanel: openRecordInSidePanelInternal } =
@@ -346,6 +356,81 @@ export const useFrontComponentExecutionContext = ({
       );
     };
 
+  const downloadXlsx: FrontComponentHostCommunicationApi['downloadXlsx'] =
+    async (params) => {
+      const now = Date.now();
+      const previousCallAt =
+        lastDownloadXlsxCallAtByFrontComponentId.get(frontComponentId) ?? 0;
+
+      if (now - previousCallAt < FRONT_COMPONENT_DOWNLOAD_RATE_LIMIT_MS) {
+        throw new Error('FRONT_COMPONENT_DOWNLOAD_RATE_LIMITED');
+      }
+      lastDownloadXlsxCallAtByFrontComponentId.set(frontComponentId, now);
+
+      const preparedDownload = prepareXlsxDownloadFromFrontComponent(params);
+
+      const shouldDownload = await new Promise<boolean>((resolve, reject) => {
+        let confirmationTimeoutId: number | undefined;
+        const modalCaller = {
+          type: 'frontComponent' as const,
+          frontComponentId,
+        };
+
+        const cleanup = () => {
+          window.removeEventListener(
+            COMMAND_MENU_CONFIRMATION_MODAL_RESULT_BROWSER_EVENT_NAME,
+            handleConfirmationResult,
+          );
+          if (isDefined(confirmationTimeoutId)) {
+            window.clearTimeout(confirmationTimeoutId);
+          }
+        };
+
+        const handleConfirmationResult = (event: Event) => {
+          const customEvent =
+            event as CustomEvent<CommandMenuConfirmationModalResultBrowserEventDetail>;
+          const caller = customEvent.detail.caller;
+
+          if (
+            caller.type !== 'frontComponent' ||
+            caller.frontComponentId !== frontComponentId
+          ) {
+            return;
+          }
+
+          cleanup();
+          resolve(customEvent.detail.confirmationResult === 'confirm');
+        };
+
+        window.addEventListener(
+          COMMAND_MENU_CONFIRMATION_MODAL_RESULT_BROWSER_EVENT_NAME,
+          handleConfirmationResult,
+        );
+        confirmationTimeoutId = window.setTimeout(() => {
+          cleanup();
+          closeConfirmationModal(modalCaller);
+          reject(new Error('FRONT_COMPONENT_DOWNLOAD_CONFIRMATION_TIMEOUT'));
+        }, FRONT_COMPONENT_DOWNLOAD_CONFIRMATION_TIMEOUT_MS);
+
+        try {
+          openConfirmationModal({
+            caller: modalCaller,
+            title: 'Descargar archivo',
+            subtitle: `La aplicación quiere descargar "${preparedDownload.filename}".`,
+            confirmButtonText: 'Descargar',
+            confirmButtonAccent: 'blue',
+          });
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      });
+
+      if (shouldDownload) {
+        downloadPreparedXlsxFromFrontComponent(preparedDownload);
+      }
+    };
+
   const frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi =
     {
       navigate,
@@ -357,6 +442,7 @@ export const useFrontComponentExecutionContext = ({
       closeSidePanel,
       updateProgress,
       copyToClipboard,
+      downloadXlsx,
     };
 
   return {

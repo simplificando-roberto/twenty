@@ -53022,6 +53022,7 @@ __metadata:
     ts-jest: "npm:^29.1.1"
     ts-key-enum: "npm:^2.0.12"
     twenty-front-component-renderer: "workspace:*"
+    twenty-sdk: "workspace:*"
     twenty-shared: "workspace:*"
     twenty-ui: "workspace:*"
     type-fest: "npm:4.10.1"
