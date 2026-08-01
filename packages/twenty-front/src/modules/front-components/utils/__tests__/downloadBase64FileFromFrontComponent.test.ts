@@ -4,7 +4,15 @@ import {
   FRONT_COMPONENT_XLSX_MIME_TYPE,
 } from '@/front-components/utils/downloadBase64FileFromFrontComponent';
 
-const XLSX_BASE64 = 'UEsDBAECAwQ=';
+const createXlsxBytes = (size = 256) => {
+  const bytes = Buffer.alloc(size);
+  bytes.set([0x50, 0x4b, 0x03, 0x04]);
+  bytes.write('[Content_Types].xml', 16, 'ascii');
+  bytes.write('xl/workbook.xml', 64, 'ascii');
+  return bytes;
+};
+
+const XLSX_BASE64 = createXlsxBytes().toString('base64');
 
 describe('downloadBase64FileFromFrontComponent', () => {
   afterEach(() => {
@@ -67,6 +75,16 @@ describe('downloadBase64FileFromFrontComponent', () => {
       contentBase64: 'AAEC',
       mimeType: FRONT_COMPONENT_XLSX_MIME_TYPE,
     },
+    {
+      filename: 'x.xlsx',
+      contentBase64: ` ${XLSX_BASE64}`,
+      mimeType: FRONT_COMPONENT_XLSX_MIME_TYPE,
+    },
+    {
+      filename: 'x.xlsx',
+      contentBase64: Buffer.from([0x50, 0x4b, 0x03, 0x04]).toString('base64'),
+      mimeType: FRONT_COMPONENT_XLSX_MIME_TYPE,
+    },
     { filename: 'x.xlsx', contentBase64: XLSX_BASE64, mimeType: 'text/html' },
   ])('rejects invalid or non-XLSX download input', (input) => {
     expect(() => downloadBase64FileFromFrontComponent(input)).toThrow(
@@ -96,8 +114,7 @@ describe('downloadBase64FileFromFrontComponent', () => {
     });
     jest.spyOn(window, 'setTimeout').mockReturnValue(1);
 
-    const bytes = Buffer.alloc(FRONT_COMPONENT_DOWNLOAD_MAX_BYTES);
-    bytes.set([0x50, 0x4b, 0x03, 0x04]);
+    const bytes = createXlsxBytes(FRONT_COMPONENT_DOWNLOAD_MAX_BYTES);
 
     expect(() =>
       downloadBase64FileFromFrontComponent({
@@ -112,8 +129,7 @@ describe('downloadBase64FileFromFrontComponent', () => {
   });
 
   it('rejects an XLSX payload one byte over the host limit', () => {
-    const bytes = Buffer.alloc(FRONT_COMPONENT_DOWNLOAD_MAX_BYTES + 1);
-    bytes.set([0x50, 0x4b, 0x03, 0x04]);
+    const bytes = createXlsxBytes(FRONT_COMPONENT_DOWNLOAD_MAX_BYTES + 1);
 
     expect(() =>
       downloadBase64FileFromFrontComponent({
