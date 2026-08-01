@@ -1,6 +1,7 @@
 import {
   type CloseSidePanelFunction,
   type CopyToClipboardFunction,
+  type DownloadXlsxFunction,
   type EnqueueSnackbarFunction,
   type NavigateFunction,
   type OpenCommandConfirmationModalFunction,
@@ -20,4 +21,5 @@ export type FrontComponentHostCommunicationApiStore = {
   closeSidePanel?: CloseSidePanelFunction;
   updateProgress?: UpdateProgressFunction;
   copyToClipboard?: CopyToClipboardFunction;
+  downloadXlsx?: DownloadXlsxFunction;
 };

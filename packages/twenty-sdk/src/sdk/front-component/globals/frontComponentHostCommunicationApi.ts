@@ -100,6 +100,16 @@ export type RequestAccessTokenRefreshFunction = () => Promise<string>;
 
 export type CopyToClipboardFunction = (text: string) => Promise<void>;
 
+export type DownloadXlsxParams = {
+  filename: string;
+  contentBase64: string;
+  mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+};
+
+export type DownloadXlsxFunction = (
+  params: DownloadXlsxParams,
+) => Promise<void>;
+
 export type OpenCommandConfirmationModalHostFunction = (
   params: Parameters<OpenCommandConfirmationModalFunction>[0],
 ) => Promise<void>;
@@ -114,6 +124,7 @@ export type FrontComponentHostCommunicationApiStore = {
   closeSidePanel?: CloseSidePanelFunction;
   updateProgress?: UpdateProgressFunction;
   copyToClipboard?: CopyToClipboardFunction;
+  downloadXlsx?: DownloadXlsxFunction;
 };
 
 import { FRONT_COMPONENT_HOST_COMMUNICATION_API_KEY } from '../constants/front-component-host-communication-api-key';

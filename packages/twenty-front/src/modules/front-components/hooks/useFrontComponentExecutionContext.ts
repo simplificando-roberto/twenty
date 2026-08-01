@@ -21,6 +21,7 @@ import { commandMenuItemProgressFamilyState } from '@/command-menu-item/states/c
 import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { contextStoreRecordShowParentViewComponentState } from '@/context-store/states/contextStoreRecordShowParentViewComponentState';
 import { useRequestApplicationTokenRefresh } from '@/front-components/hooks/useRequestApplicationTokenRefresh';
+import { downloadBase64FileFromFrontComponent } from '@/front-components/utils/downloadBase64FileFromFrontComponent';
 import { canOpenObjectInSidePanel } from '@/object-record/utils/canOpenObjectInSidePanel';
 import { useNavigateSidePanel } from '@/side-panel/hooks/useNavigateSidePanel';
 import { useOpenComposeEmailInSidePanel } from '@/side-panel/hooks/useOpenComposeEmailInSidePanel';
@@ -43,6 +44,7 @@ import { useNavigateApp } from '~/hooks/useNavigateApp';
 const FRONT_COMPONENT_CLIPBOARD_MAX_LENGTH = 64 * 1024;
 const FRONT_COMPONENT_CLIPBOARD_RATE_LIMIT_MS = 1000;
 const FRONT_COMPONENT_CLIPBOARD_PREVIEW_LENGTH = 30;
+const FRONT_COMPONENT_DOWNLOAD_RATE_LIMIT_MS = 500;
 
 export const useFrontComponentExecutionContext = ({
   frontComponentId,
@@ -76,6 +78,7 @@ export const useFrontComponentExecutionContext = ({
   const setSidePanelSearch = useSetAtomState(sidePanelSearchState);
   const { getIcon } = useIcons();
   const unmountEngineCommand = useUnmountCommand();
+  const lastDownloadXlsxCallAtRef = useRef(0);
   const {
     enqueueSuccessSnackBar,
     enqueueErrorSnackBar,
@@ -346,6 +349,19 @@ export const useFrontComponentExecutionContext = ({
       );
     };
 
+  const downloadXlsx: FrontComponentHostCommunicationApi['downloadXlsx'] =
+    async (params) => {
+      const now = Date.now();
+      if (
+        now - lastDownloadXlsxCallAtRef.current <
+        FRONT_COMPONENT_DOWNLOAD_RATE_LIMIT_MS
+      ) {
+        return;
+      }
+      downloadBase64FileFromFrontComponent(params);
+      lastDownloadXlsxCallAtRef.current = now;
+    };
+
   const frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi =
     {
       navigate,
@@ -357,6 +373,7 @@ export const useFrontComponentExecutionContext = ({
       closeSidePanel,
       updateProgress,
       copyToClipboard,
+      downloadXlsx,
     };
 
   return {
