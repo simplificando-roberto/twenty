@@ -1,0 +1,16 @@
+diff --git a/lib/appdmg.js b/lib/appdmg.js
+--- a/lib/appdmg.js
++++ b/lib/appdmg.js
+@@ -6,7 +6,11 @@
+ 
+ const async = require('async')
+ const DSStore = require('ds-store')
+-const sizeOf = require('image-size')
++const { imageSizeFromFile } = require('image-size/fromFile')
++// image-size 2 reads files asynchronously; retain appdmg's callback contract.
++const sizeOf = (path, callback) => {
++  imageSizeFromFile(path).then(value => callback(null, value), callback)
++}
+ const validator = require('is-my-json-valid')
+ const parseColor = require('parse-color')
+ 

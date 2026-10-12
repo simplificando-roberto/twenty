@@ -37,5 +37,8 @@
   "dependencies": {
     "marked": "^18.0.5",
     "pdf-lib": "^1.17.1"
+  },
+  "resolutions": {
+    "twenty-sdk/sharp": "0.35.5"
   }
 }
