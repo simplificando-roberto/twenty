@@ -42,5 +42,8 @@
     "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^4.2.1",
     "vitest": "^4.0.0"
+  },
+  "resolutions": {
+    "twenty-sdk/sharp": "0.35.5"
   }
 }
